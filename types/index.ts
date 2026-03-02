@@ -2,7 +2,8 @@ export type TutorCredentialType =
   | 'High School Diploma'
   | 'College (or Higher) Diploma'
   | 'Teaching / Substitute Teaching Certificate - AZ State'
-  | 'Subject-Specific degree';
+  | 'Subject Matter Expert (SME) Certification'
+  | ""; // Include empty string to allow for null values without causing type errors';
 
 export type ServiceLog = {
   id: string;
@@ -70,18 +71,18 @@ export type PacketView = {
 
 export type Tutor = {
   id: string;
+  school_id: string;
   full_name: string;
   email: string | null;
   phone: string | null;
-  credential_type: TutorCredentialType | null;
+  credential_type: string | null;
+  credential_expiration: string | null; // This is the one TypeScript is looking for
   field_of_study: string | null;
-  degree_title: string | null; // New field
-  issue_date: string | null;   // New field
-  expiration_date: string | null; // New field
+  degree_title: string | null;
+  issue_date: string | null;
   credential_url: string | null;
   is_active: boolean;
-  school_id: string;
-  updated_at: string;
+  created_at: string;
 };
 
 export type Student = {

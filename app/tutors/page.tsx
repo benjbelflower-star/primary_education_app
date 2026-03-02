@@ -3,16 +3,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Tutor } from "../../types";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function TutorManagement() {
-  const [tutors, setTutors] = useState<(Tutor & { invoice_count: number, credential_expiration?: string | null })[]>([]);
+  const router = useRouter();
+  const [tutors, setTutors] = useState<(Tutor & { invoice_count: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
   useEffect(() => {
     async function loadTutors() {
-      // Fetch tutors
       const { data: tutorData } = await supabase
         .from("tutors")
         .select("*, invoices(id)")
@@ -20,7 +21,6 @@ export default function TutorManagement() {
         .order("full_name");
 
       if (tutorData) {
-        // Map the data to include the count of linked invoices
         const formatted = tutorData.map(t => ({
           ...t,
           invoice_count: t.invoices?.length || 0
@@ -32,7 +32,7 @@ export default function TutorManagement() {
     loadTutors();
   }, []);
 
-  async function toggleStatus(tutor: Tutor) {
+  async function toggleStatus(tutor: any) {
     const { error } = await supabase
       .from("tutors")
       .update({ is_active: !tutor.is_active })
@@ -43,87 +43,91 @@ export default function TutorManagement() {
     }
   }
 
-  // Helper function to check credential status for ESA Compliance
   const getCredentialStatus = (expirationDate: string | null | undefined) => {
     if (!expirationDate) return { text: "No Expiration", color: "#64748b", bg: "#f1f5f9" };
-    
     const today = new Date();
     const expDate = new Date(expirationDate);
-    const diffTime = expDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) return { text: "Expired", color: "#c53030", bg: "#fff5f5" };
-    if (diffDays <= 30) return { text: `Expires in ${diffDays} days`, color: "#ca8a04", bg: "#fefce8" };
+    if (diffDays <= 30) return { text: `Expires in ${diffDays}d`, color: "#ca8a04", bg: "#fefce8" };
     return { text: "Valid", color: "#16a34a", bg: "#f0fdf4" };
   };
 
-  if (loading) return <div style={{ padding: 40 }}>Loading management console...</div>;
+  if (loading) return <div style={{ padding: 40, fontFamily: "system-ui" }}>Loading Providers...</div>;
 
   return (
-    <div style={{ padding: 40, fontFamily: "system-ui" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
+    <div style={{ padding: "20px", maxWidth: 1000, margin: "0 auto", fontFamily: "system-ui" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
-          <h1 style={{ margin: "0 0 8px 0" }}>Tutor Management</h1>
-          <p style={{ color: "#666", margin: 0 }}>Manage teaching staff and track ESA compliance credentials.</p>
+          <h1 style={{ fontSize: "28px", margin: 0, color: "#0f172a" }}>Providers</h1>
+          <p style={{ color: "#64748b", margin: "4px 0 0 0", fontSize: "14px" }}>ESA Compliance Roster</p>
         </div>
-        <Link href="/tutors/new" style={{ padding: "10px 20px", backgroundColor: "#007bff", color: "white", borderRadius: 6, textDecoration: "none", fontWeight: 600 }}>
-          + Add New Tutor
+        <Link href="/tutors/new" style={{ padding: "10px 16px", backgroundColor: "#0f172a", color: "white", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "14px" }}>
+          + Add
         </Link>
       </div>
 
-      <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e1e8ed", overflow: "hidden" }}>
+      {/* MOBILE VIEW: Card List */}
+      <div className="mobile-only-cards" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {tutors.map((t) => {
+          const compliance = getCredentialStatus(t.credential_expiration);
+          return (
+            <div key={t.id} style={{ backgroundColor: "white", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0", opacity: t.is_active ? 1 : 0.6 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                <div onClick={() => router.push(`/tutors/${t.id}`)} style={{ cursor: "pointer" }}>
+                  <div style={{ fontWeight: 700, fontSize: "16px", color: "#007bff" }}>{t.full_name}</div>
+                  <div style={{ fontSize: "13px", color: "#64748b" }}>{t.credential_type || "No Credential"}</div>
+                </div>
+                <span style={{ padding: "4px 10px", borderRadius: "12px", fontSize: "11px", fontWeight: 700, backgroundColor: compliance.bg, color: compliance.color }}>
+                  {compliance.text}
+                </span>
+              </div>
+              
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f1f5f9", paddingTop: "12px" }}>
+                <div style={{ fontSize: "12px", color: "#94a3b8" }}>
+                  <strong>{t.invoice_count}</strong> Invoices
+                </div>
+                <button 
+                  onClick={() => toggleStatus(t)}
+                  style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", background: "white", fontSize: "12px", fontWeight: 600, color: t.is_active ? "#dc2626" : "#16a34a" }}
+                >
+                  {t.is_active ? "Deactivate" : "Activate"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP VIEW: Table */}
+      <div className="desktop-only-table" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ textAlign: "left", borderBottom: "2px solid #eee", backgroundColor: "#f8fafc" }}>
-              <th style={{ padding: "16px 12px", color: "#64748b", fontSize: "13px", textTransform: "uppercase" }}>Name</th>
-              <th style={{ padding: "16px 12px", color: "#64748b", fontSize: "13px", textTransform: "uppercase" }}>Credential</th>
-              <th style={{ padding: "16px 12px", color: "#64748b", fontSize: "13px", textTransform: "uppercase" }}>Compliance</th>
-              <th style={{ padding: "16px 12px", color: "#64748b", fontSize: "13px", textTransform: "uppercase" }}>Invoices</th>
-              <th style={{ padding: "16px 12px", color: "#64748b", fontSize: "13px", textTransform: "uppercase" }}>Status</th>
-              <th style={{ padding: "16px 12px", color: "#64748b", fontSize: "13px", textTransform: "uppercase" }}>Actions</th>
+            <tr style={{ textAlign: "left", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Provider</th>
+              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Compliance</th>
+              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Invoices</th>
+              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b", textAlign: "right" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {tutors.map(t => {
-              const complianceStatus = getCredentialStatus(t.credential_expiration);
+            {tutors.map((t) => {
+              const compliance = getCredentialStatus(t.credential_expiration);
               return (
-                <tr key={t.id} style={{ borderBottom: "1px solid #eee", opacity: t.is_active ? 1 : 0.6 }}>
-                  <td style={{ padding: "16px 12px" }}>
-                    <Link href={`/tutors/${t.id}`} style={{ textDecoration: "none" }}>
-                      <div style={{ fontWeight: 600, color: "#007bff", cursor: "pointer" }}>
-                        {t.full_name}
-                      </div>
-                    </Link>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>{t.email}</div>
+                <tr key={t.id} style={{ borderBottom: "1px solid #f1f5f9", opacity: t.is_active ? 1 : 0.6 }}>
+                  <td style={{ padding: "16px" }}>
+                    <Link href={`/tutors/${t.id}`} style={{ textDecoration: "none", fontWeight: 600, color: "#007bff" }}>{t.full_name}</Link>
+                    <div style={{ fontSize: "12px", color: "#94a3b8" }}>{t.credential_type}</div>
                   </td>
-                  <td style={{ padding: "16px 12px" }}>{t.credential_type || "None"}</td>
-                  <td style={{ padding: "16px 12px" }}>
-                    <span style={{ 
-                      padding: "4px 8px", 
-                      borderRadius: "12px", 
-                      fontSize: "12px", 
-                      fontWeight: 700, 
-                      backgroundColor: complianceStatus.bg, 
-                      color: complianceStatus.color 
-                    }}>
-                      {complianceStatus.text}
+                  <td style={{ padding: "16px" }}>
+                    <span style={{ padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, backgroundColor: compliance.bg, color: compliance.color }}>
+                      {compliance.text}
                     </span>
                   </td>
-                  <td style={{ padding: "16px 12px" }}>
-                    <span style={{ backgroundColor: "#f1f5f9", color: "#475569", fontWeight: 600, padding: "4px 8px", borderRadius: 4, fontSize: "13px" }}>
-                      {t.invoice_count}
-                    </span>
-                  </td>
-                  <td style={{ padding: "16px 12px" }}>
-                    <span style={{ color: t.is_active ? "#16a34a" : "#dc3545", fontWeight: 700 }}>
-                      {t.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td style={{ padding: "16px 12px" }}>
-                    <button 
-                      onClick={() => toggleStatus(t)}
-                      style={{ padding: "6px 12px", cursor: "pointer", borderRadius: 4, border: "1px solid #ccc", background: "white", fontWeight: 600, color: "#475569" }}
-                    >
+                  <td style={{ padding: "16px", fontSize: "14px" }}>{t.invoice_count}</td>
+                  <td style={{ padding: "16px", textAlign: "right" }}>
+                    <button onClick={() => toggleStatus(t)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1px solid #ccc", background: "white", cursor: "pointer", fontWeight: 600 }}>
                       {t.is_active ? "Deactivate" : "Activate"}
                     </button>
                   </td>
@@ -133,6 +137,17 @@ export default function TutorManagement() {
           </tbody>
         </table>
       </div>
+
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .desktop-only-table { display: none !important; }
+          .mobile-only-cards { display: flex !important; }
+        }
+        @media (min-width: 769px) {
+          .desktop-only-table { display: block !important; }
+          .mobile-only-cards { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
