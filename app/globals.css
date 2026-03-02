@@ -24,3 +24,65 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #print-area, #print-area * {
+    visibility: visible;
+  }
+
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
+
+/* Base resets */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f1f5f9;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  /* Turn the side layout into a top-to-bottom layout */
+  .desktop-sidebar {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding: 10px !important;
+    white-space: nowrap;
+  }
+  
+  /* Hide headers in the nav on mobile to save space */
+  .desktop-sidebar .nav-header {
+    display: none !important;
+  }
+
+  /* Make nav items sit side-by-side like a top menu */
+  .desktop-sidebar a {
+    display: inline-block !important;
+    padding: 10px 15px !important;
+    font-size: 14px !important;
+  }
+
+  /* Remove the left margin from the main content */
+  .main-content {
+    margin-left: 0 !important;
+    padding: 20px !important;
+  }
+
+  /* Force grids to stack into a single column */
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
