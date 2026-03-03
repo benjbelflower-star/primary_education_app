@@ -33,7 +33,7 @@ const isResetPage = req.nextUrl.pathname === "/auth/reset-password";
   }
 
   if (session && isLoginPage) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return res;
