@@ -31,8 +31,8 @@ export default function TutorComplianceReport() {
           let daysRemaining = null;
           let complianceStatus: "expired" | "warning" | "valid" = "valid";
 
-          if (t.expiration_date) {
-            const exp = new Date(t.expiration_date);
+          if (t.credential_expiration) {
+            const exp = new Date(t.credential_expiration);
             const diffTime = exp.getTime() - now.getTime();
             daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -112,7 +112,7 @@ export default function TutorComplianceReport() {
                 </Link>
               </td>
               <td style={{ padding: "12px", fontSize: "14px" }}>{t.credential_type}</td>
-              <td style={{ padding: "12px", fontSize: "14px" }}>{t.expiration_date || "N/A"}</td>
+              <td style={{ padding: "12px", fontSize: "14px" }}>{t.credential_expiration || "N/A"}</td>
               <td style={{ padding: "12px" }}>
                 <span style={{ 
                   padding: "4px 10px", borderRadius: "12px", fontSize: "11px", textTransform: "uppercase",
