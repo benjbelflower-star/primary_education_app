@@ -56,8 +56,8 @@ export default function LogService() {
     }
   }
 
-  const labelStyle = { fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block", color: "#475569", textTransform: "uppercase" as const };
-  const inputStyle = { padding: "12px", borderRadius: 6, border: "1px solid #cbd5e1", width: "100%", boxSizing: "border-box" as const, fontSize: "15px", backgroundColor: "white" };
+  const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: "13px", marginBottom: "6px", display: "block", color: "#475569", textTransform: "uppercase" };
+  const inputStyle: React.CSSProperties = { padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "100%", boxSizing: "border-box", fontSize: "15px", backgroundColor: "white" };
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px", fontFamily: "system-ui" }}>
@@ -93,8 +93,9 @@ export default function LogService() {
           </select>
         </div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-          <div style={{ flex: "1 1 200px" }}>
+        {/* Tailwind grid: 1 column on mobile, 2 on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
             <label style={labelStyle}>Date of Service</label>
             <input required type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} style={inputStyle} />
           </div>
@@ -119,13 +120,13 @@ export default function LogService() {
         <button 
           type="submit" 
           disabled={isSubmitting}
-          style={{ padding: "14px", backgroundColor: "#0f172a", color: "white", borderRadius: 8, border: "none", fontWeight: 600, cursor: isSubmitting ? "not-allowed" : "pointer", marginTop: "8px", fontSize: "16px" }}
+          style={{ padding: "14px", backgroundColor: "#0f172a", color: "white", borderRadius: "8px", border: "none", fontWeight: 600, cursor: isSubmitting ? "not-allowed" : "pointer", marginTop: "8px", fontSize: "16px" }}
         >
           {isSubmitting ? "Saving..." : "Submit Log"}
         </button>
 
         {message && (
-          <div style={{ padding: "12px", borderRadius: 6, textAlign: "center", fontWeight: 600, backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4", color: message.includes("Error") ? "#c53030" : "#16a34a" }}>
+          <div style={{ padding: "12px", borderRadius: "6px", textAlign: "center", fontWeight: 600, backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4", color: message.includes("Error") ? "#c53030" : "#16a34a" }}>
             {message}
           </div>
         )}

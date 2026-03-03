@@ -51,22 +51,15 @@ export default function StudentRoster() {
         </button>
       </div>
 
-      {/* MOBILE VIEW: Uses centralized 'show-on-mobile' class */}
-      <div className="show-on-mobile" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+      {/* MOBILE VIEW: block on mobile, hidden on medium screens and up */}
+      <div className="block md:hidden" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
         {students.map((student) => {
           const colors = getStatusColor(student.status);
           return (
             <div 
               key={student.id}
               onClick={() => router.push(`/students/${student.id}`)}
-              style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                padding: "16px 12px", 
-                borderBottom: "1px solid #f1f5f9",
-                justifyContent: "space-between",
-                cursor: "pointer"
-              }}
+              style={{ display: "flex", alignItems: "center", padding: "16px 12px", borderBottom: "1px solid #f1f5f9", justifyContent: "space-between", cursor: "pointer" }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: "15px", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -78,30 +71,18 @@ export default function StudentRoster() {
               </div>
               
               <div style={{ marginLeft: "12px", flexShrink: 0 }}>
-                <span style={{ 
-                  padding: "4px 10px", 
-                  borderRadius: "6px", 
-                  fontSize: "11px", 
-                  fontWeight: 700, 
-                  textTransform: "uppercase",
-                  backgroundColor: colors.bg,
-                  color: colors.text,
-                  display: "inline-block",
-                  textAlign: "center",
-                  minWidth: "70px"
-                }}>
+                <span style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", backgroundColor: colors.bg, color: colors.text, display: "inline-block", textAlign: "center", minWidth: "70px" }}>
                   {student.status}
                 </span>
               </div>
-
               <div style={{ marginLeft: "12px", color: "#cbd5e1", fontSize: "18px" }}>›</div>
             </div>
           );
         })}
       </div>
 
-      {/* DESKTOP VIEW: Uses centralized 'show-on-desktop' class */}
-      <div className="show-on-desktop" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+      {/* DESKTOP VIEW: hidden on mobile, block on medium screens and up */}
+      <div className="hidden md:block" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ textAlign: "left", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
@@ -120,22 +101,12 @@ export default function StudentRoster() {
                 </td>
                 <td style={{ padding: "16px", fontSize: "14px" }}>{student.grade_level}</td>
                 <td style={{ padding: "16px" }}>
-                  <span style={{ 
-                    padding: "4px 8px", 
-                    borderRadius: "12px", 
-                    fontSize: "12px", 
-                    fontWeight: 600,
-                    backgroundColor: getStatusColor(student.status).bg,
-                    color: getStatusColor(student.status).text
-                  }}>
+                  <span style={{ padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, backgroundColor: getStatusColor(student.status).bg, color: getStatusColor(student.status).text }}>
                     {student.status}
                   </span>
                 </td>
                 <td style={{ padding: "16px", textAlign: "right" }}>
-                  <button 
-                    onClick={() => router.push(`/students/${student.id}`)}
-                    style={{ background: "none", border: "none", color: "#007bff", cursor: "pointer", fontWeight: 600 }}
-                  >
+                  <button onClick={() => router.push(`/students/${student.id}`)} style={{ background: "none", border: "none", color: "#007bff", cursor: "pointer", fontWeight: 600 }}>
                     View
                   </button>
                 </td>

@@ -43,62 +43,30 @@ export default function AddNewStudent() {
     }
   }
 
-  const inputStyle: React.CSSProperties = { 
-    padding: "12px", 
-    borderRadius: "6px", 
-    border: "1px solid #cbd5e1", 
-    width: "100%", 
-    boxSizing: "border-box", 
-    fontSize: "15px"
-  };
-  
-  const labelStyle: React.CSSProperties = { 
-    fontWeight: 600, 
-    fontSize: "13px", 
-    display: "block", 
-    marginBottom: "6px", 
-    color: "#475569",
-    textTransform: "uppercase"
-  };
+  const inputStyle: React.CSSProperties = { padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "100%", boxSizing: "border-box", fontSize: "15px" };
+  const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: "13px", display: "block", marginBottom: "6px", color: "#475569", textTransform: "uppercase" };
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px", fontFamily: "system-ui" }}>
-      <button 
-        onClick={() => router.push("/students")} 
-        style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, fontWeight: 600, marginBottom: "24px" }}
-      >
+      <button onClick={() => router.push("/students")} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, fontWeight: 600, marginBottom: "24px" }}>
         ← Back to Roster
       </button>
 
       <h1 style={{ fontSize: "28px", margin: "0 0 8px 0", color: "#0f172a" }}>Add New Student</h1>
-      <p style={{ color: "#64748b", marginBottom: "30px", fontSize: "14px" }}>
-        Create a new student profile for ESA tracking.
-      </p>
+      <p style={{ color: "#64748b", marginBottom: "30px", fontSize: "14px" }}>Create a new student profile for ESA tracking.</p>
 
       <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           
-          {/* THE FIX: Using flexWrap guarantees they stack on mobile screens */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-            <div style={{ flex: "1 1 200px" }}>
+          {/* Tailwind grid: 1 column on mobile, 2 on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <label style={labelStyle}>First Name</label>
-              <input 
-                required 
-                type="text" 
-                value={firstName} 
-                onChange={e => setFirstName(e.target.value)} 
-                style={inputStyle} 
-              />
+              <input required type="text" value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} />
             </div>
-            <div style={{ flex: "1 1 200px" }}>
+            <div>
               <label style={labelStyle}>Last Name</label>
-              <input 
-                required 
-                type="text" 
-                value={lastName} 
-                onChange={e => setLastName(e.target.value)} 
-                style={inputStyle} 
-              />
+              <input required type="text" value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} />
             </div>
           </div>
 
@@ -118,61 +86,24 @@ export default function AddNewStudent() {
 
           <div style={{ padding: "16px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", marginTop: "8px" }}>
             <h3 style={{ marginTop: 0, marginBottom: "16px", fontSize: "14px", color: "#0f172a" }}>Guardian Information</h3>
-            
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label style={labelStyle}>Guardian Name</label>
-                <input 
-                  type="text" 
-                  value={guardianName} 
-                  onChange={e => setGuardianName(e.target.value)} 
-                  style={inputStyle} 
-                  placeholder="e.g. Jane Doe"
-                />
+                <input type="text" value={guardianName} onChange={e => setGuardianName(e.target.value)} style={inputStyle} placeholder="e.g. Jane Doe" />
               </div>
-
               <div>
                 <label style={labelStyle}>Guardian Email</label>
-                <input 
-                  type="email" 
-                  value={guardianEmail} 
-                  onChange={e => setGuardianEmail(e.target.value)} 
-                  style={inputStyle} 
-                  placeholder="jane.doe@example.com"
-                />
+                <input type="email" value={guardianEmail} onChange={e => setGuardianEmail(e.target.value)} style={inputStyle} placeholder="jane.doe@example.com" />
               </div>
             </div>
           </div>
 
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            style={{ 
-              padding: "14px", 
-              backgroundColor: "#0f172a", 
-              color: "white", 
-              border: "none", 
-              borderRadius: "8px", 
-              fontWeight: 600, 
-              fontSize: "16px",
-              cursor: isSubmitting ? "not-allowed" : "pointer", 
-              marginTop: "12px" 
-            }}
-          >
+          <button type="submit" disabled={isSubmitting} style={{ padding: "14px", backgroundColor: "#0f172a", color: "white", border: "none", borderRadius: "8px", fontWeight: 600, fontSize: "16px", cursor: isSubmitting ? "not-allowed" : "pointer", marginTop: "12px" }}>
             {isSubmitting ? "Saving..." : "Create Student"}
           </button>
 
           {message && (
-            <div style={{ 
-              padding: "12px", 
-              borderRadius: "6px", 
-              textAlign: "center", 
-              fontSize: "14px", 
-              fontWeight: 600, 
-              backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4", 
-              color: message.includes("Error") ? "#c53030" : "#16a34a",
-              border: `1px solid ${message.includes("Error") ? "#fecaca" : "#bbf7d0"}`
-            }}>
+            <div style={{ padding: "12px", borderRadius: "6px", textAlign: "center", fontSize: "14px", fontWeight: 600, backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4", color: message.includes("Error") ? "#c53030" : "#16a34a", border: `1px solid ${message.includes("Error") ? "#fecaca" : "#bbf7d0"}` }}>
               {message}
             </div>
           )}
