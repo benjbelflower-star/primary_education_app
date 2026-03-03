@@ -345,4 +345,4 @@ Return exactly this structure:
 
 ///There's one setup step you need to do before this will work. In your project's root folder, find the file called `.env.local` (create it if it doesn't exist) and add this line:
 
-NEXT_PUBLIC_ANTHROPIC_API_KEY=your_api_key_here
+//NEXT_PUBLIC_ANTHROPIC_API_KEY=your_anthropic_api_key_here
