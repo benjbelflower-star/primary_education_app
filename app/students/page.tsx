@@ -51,8 +51,8 @@ export default function StudentRoster() {
         </button>
       </div>
 
-      {/* MOBILE VIEW: Card List (Visible only on small screens via CSS) */}
-      <div className="mobile-only-cards" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      {/* MOBILE VIEW: High-Density Rows */}
+      <div className="mobile-only-rows" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
         {students.map((student) => {
           const colors = getStatusColor(student.status);
           return (
@@ -60,42 +60,52 @@ export default function StudentRoster() {
               key={student.id}
               onClick={() => router.push(`/students/${student.id}`)}
               style={{ 
-                backgroundColor: "white", 
-                padding: "16px", 
-                borderRadius: "12px", 
-                border: "1px solid #e2e8f0",
-                display: "flex",
+                display: "flex", 
+                alignItems: "center", 
+                padding: "16px 12px", 
+                borderBottom: "1px solid #f1f5f9",
                 justifyContent: "space-between",
-                alignItems: "center",
                 cursor: "pointer"
               }}
             >
-              <div>
-                <div style={{ fontWeight: 700, fontSize: "16px", color: "#0f172a" }}>
+              {/* Column 1: Name & Details */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: "15px", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {student.first_name} {student.last_name}
                 </div>
-                <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px" }}>
+                <div style={{ fontSize: "12px", color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   Grade {student.grade_level || "N/A"} • {student.guardian_name || "No Guardian"}
                 </div>
               </div>
               
-              <div style={{ 
-                padding: "4px 10px", 
-                borderRadius: "20px", 
-                fontSize: "11px", 
-                fontWeight: 700, 
-                textTransform: "uppercase",
-                backgroundColor: colors.bg,
-                color: colors.text
-              }}>
-                {student.status}
+              {/* Column 2: Status Badge */}
+              <div style={{ marginLeft: "12px", flexShrink: 0 }}>
+                <span style={{ 
+                  padding: "4px 10px", 
+                  borderRadius: "6px", 
+                  fontSize: "11px", 
+                  fontWeight: 700, 
+                  textTransform: "uppercase",
+                  backgroundColor: colors.bg,
+                  color: colors.text,
+                  display: "inline-block",
+                  textAlign: "center",
+                  minWidth: "70px"
+                }}>
+                  {student.status}
+                </span>
+              </div>
+
+              {/* Column .5: Action Arrow */}
+              <div style={{ marginLeft: "12px", color: "#cbd5e1", fontSize: "18px" }}>
+                ›
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* DESKTOP VIEW: Table (Hidden on small screens via CSS) */}
+      {/* DESKTOP VIEW: Table */}
       <div className="desktop-only-table" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -140,15 +150,14 @@ export default function StudentRoster() {
         </table>
       </div>
 
-      {/* Global Style overrides to toggle between Card and Table */}
       <style jsx>{`
         @media (max-width: 768px) {
           .desktop-only-table { display: none !important; }
-          .mobile-only-cards { display: flex !important; }
+          .mobile-only-rows { display: block !important; }
         }
         @media (min-width: 769px) {
           .desktop-only-table { display: block !important; }
-          .mobile-only-cards { display: none !important; }
+          .mobile-only-rows { display: none !important; }
         }
       `}</style>
     </div>

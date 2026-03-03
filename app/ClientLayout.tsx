@@ -7,12 +7,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
 
   const navItems = [
-    { label: "Home", path: "/", icon: "🏠" },
-    { label: "Students", path: "/students", icon: "👥" },
-    { label: "Providers", path: "/tutors", icon: "🎓" },
-    { label: "Logs", path: "/logs/new", icon: "📝" },
-  ];
-
+  { label: "Home", path: "/", icon: "🏠" },
+  { label: "Students", path: "/students", icon: "👥" },
+  { label: "Tutors", path: "/tutors", icon: "🎓" }, // Changed from "Providers"
+  { label: "Logs", path: "/logs/new", icon: "📝" },
+];
+ 
   return (
     <>
       {/* Desktop Sidebar (Controlled by globals.css) */}

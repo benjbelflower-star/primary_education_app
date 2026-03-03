@@ -41,7 +41,7 @@ export default function TutorManagement() {
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <h1 style={{ fontSize: "24px", fontWeight: 700, margin: 0 }}>Providers</h1>
+        <h1 style={{ fontSize: "24px", fontWeight: 700, margin: 0 }}>Tutors</h1>
         <button 
           onClick={() => router.push("/tutors/new")}
           style={{ backgroundColor: "#0f172a", color: "white", border: "none", padding: "8px 16px", borderRadius: "6px", fontWeight: 600 }}
