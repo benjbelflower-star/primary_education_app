@@ -23,6 +23,7 @@ export default function NewTutorForm() {
 
   const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016"; 
 
+  // This function simulates calling an AI Vision API to parse the document
   async function handleScan() {
     if (!credentialFile) {
       alert("Please select a file first.");
@@ -31,7 +32,9 @@ export default function NewTutorForm() {
     setIsScanning(true);
     setStatus("AI is analyzing document...");
 
+    // Simulate AI Processing Delay
     setTimeout(() => {
+      // In a real implementation, this data comes from an AI API response
       setCredentialType("College (or Higher) Diploma");
       setDegreeTitle("Bachelor of Science");
       setFieldOfStudy("Mathematics");
