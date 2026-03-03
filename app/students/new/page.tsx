@@ -81,6 +81,12 @@ export default function AddNewStudent() {
               <option value="4th Grade">4th Grade</option>
               <option value="5th Grade">5th Grade</option>
               <option value="6th Grade">6th Grade</option>
+              <option value="7th Grade">7th Grade</option>
+              <option value="8th Grade">8th Grade</option>
+              <option value="9th Grade">9th Grade</option>
+              <option value="10th Grade">10th Grade</option>
+              <option value="11th Grade">11th Grade</option>
+              <option value="12th Grade">12th Grade</option>
             </select>
           </div>
 
