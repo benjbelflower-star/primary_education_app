@@ -38,7 +38,7 @@ export default function StudentRoster() {
   return (
     <div style={{ padding: "20px", maxWidth: 1000, margin: "0 auto", fontFamily: "system-ui" }}>
       
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", gap: "16px" }}>
         <div>
           <h1 style={{ fontSize: "28px", margin: 0, color: "#0f172a" }}>Students</h1>
           <p style={{ color: "#64748b", margin: "4px 0 0 0", fontSize: "14px" }}>{students.length} Total Enrolled</p>
@@ -51,8 +51,8 @@ export default function StudentRoster() {
         </button>
       </div>
 
-      {/* MOBILE VIEW: block on mobile, hidden on medium screens and up */}
-      <div className="block md:hidden" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+      {/* MOBILE VIEW */}
+      <div className="force-mobile-view" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
         {students.map((student) => {
           const colors = getStatusColor(student.status);
           return (
@@ -81,8 +81,8 @@ export default function StudentRoster() {
         })}
       </div>
 
-      {/* DESKTOP VIEW: hidden on mobile, block on medium screens and up */}
-      <div className="hidden md:block" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+      {/* DESKTOP VIEW */}
+      <div className="force-desktop-view" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ textAlign: "left", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
@@ -115,6 +115,18 @@ export default function StudentRoster() {
           </tbody>
         </table>
       </div>
+
+      {/* DIRECT INJECTION: This forces the browser to obey the rules */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .force-desktop-view { display: none !important; }
+          .force-mobile-view { display: block !important; }
+        }
+        @media (min-width: 769px) {
+          .force-desktop-view { display: block !important; }
+          .force-mobile-view { display: none !important; }
+        }
+      `}} />
 
     </div>
   );
