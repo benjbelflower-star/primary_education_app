@@ -51,8 +51,8 @@ export default function StudentRoster() {
         </button>
       </div>
 
-      {/* MOBILE VIEW: High-Density Rows */}
-      <div className="mobile-only-rows" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+      {/* MOBILE VIEW: Uses centralized 'show-on-mobile' class */}
+      <div className="show-on-mobile" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
         {students.map((student) => {
           const colors = getStatusColor(student.status);
           return (
@@ -68,7 +68,6 @@ export default function StudentRoster() {
                 cursor: "pointer"
               }}
             >
-              {/* Column 1: Name & Details */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: "15px", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {student.first_name} {student.last_name}
@@ -78,7 +77,6 @@ export default function StudentRoster() {
                 </div>
               </div>
               
-              {/* Column 2: Status Badge */}
               <div style={{ marginLeft: "12px", flexShrink: 0 }}>
                 <span style={{ 
                   padding: "4px 10px", 
@@ -96,17 +94,14 @@ export default function StudentRoster() {
                 </span>
               </div>
 
-              {/* Column .5: Action Arrow */}
-              <div style={{ marginLeft: "12px", color: "#cbd5e1", fontSize: "18px" }}>
-                ›
-              </div>
+              <div style={{ marginLeft: "12px", color: "#cbd5e1", fontSize: "18px" }}>›</div>
             </div>
           );
         })}
       </div>
 
-      {/* DESKTOP VIEW: Table */}
-      <div className="desktop-only-table" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+      {/* DESKTOP VIEW: Uses centralized 'show-on-desktop' class */}
+      <div className="show-on-desktop" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ textAlign: "left", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
@@ -150,16 +145,6 @@ export default function StudentRoster() {
         </table>
       </div>
 
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .desktop-only-table { display: none !important; }
-          .mobile-only-rows { display: block !important; }
-        }
-        @media (min-width: 769px) {
-          .desktop-only-table { display: block !important; }
-          .mobile-only-rows { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

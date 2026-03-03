@@ -89,3 +89,31 @@ body {
 .high-density-row:active {
   background-color: #f1f5f9;
 }
+
+/* --- Centralized Responsive Utilities --- */
+
+/* 1. Desktop vs Mobile Visibility */
+.show-on-desktop { display: block; }
+.show-flex-on-desktop { display: flex; }
+.show-on-mobile { display: none !important; }
+.show-flex-on-mobile { display: none !important; }
+
+@media (max-width: 768px) {
+  .show-on-desktop { display: none !important; }
+  .show-flex-on-desktop { display: none !important; }
+  
+  .show-on-mobile { display: block !important; }
+  .show-flex-on-mobile { display: flex !important; }
+}
+
+/* 2. Form Input Stacking */
+.responsive-form-row {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.responsive-form-row > div {
+  flex: 1 1 200px; /* Forces inputs to wrap if they drop below 200px wide */
+}
