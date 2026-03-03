@@ -9,19 +9,9 @@ export default function StudentRoster() {
   const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // NEW: Javascript screen size detection
-  const [isMobile, setIsMobile] = useState(false);
-  
   const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
   useEffect(() => {
-    // 1. Check screen size
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    handleResize(); // Check immediately on load
-    window.addEventListener("resize", handleResize);
-
-    // 2. Fetch data
     async function loadStudents() {
       const { data } = await supabase
         .from("students")
@@ -33,9 +23,6 @@ export default function StudentRoster() {
       setLoading(false);
     }
     loadStudents();
-
-    // Cleanup listener
-    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -64,77 +51,49 @@ export default function StudentRoster() {
         </button>
       </div>
 
-      {/* JAVASCRIPT CONDITIONAL RENDERING */}
-      {isMobile ? (
+      <div style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         
-        /* --- MOBILE VIEW --- */
-        <div style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-          {students.map((student) => {
-            const colors = getStatusColor(student.status);
-            return (
-              <div 
-                key={student.id}
-                onClick={() => router.push(`/students/${student.id}`)}
-                style={{ display: "flex", alignItems: "center", padding: "16px 12px", borderBottom: "1px solid #f1f5f9", justifyContent: "space-between", cursor: "pointer" }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: "15px", color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {student.first_name} {student.last_name}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    Grade {student.grade_level || "N/A"} • {student.guardian_name || "No Guardian"}
-                  </div>
-                </div>
-                
-                <div style={{ marginLeft: "12px", flexShrink: 0 }}>
-                  <span style={{ padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, textTransform: "uppercase", backgroundColor: colors.bg, color: colors.text, display: "inline-block", textAlign: "center", minWidth: "70px" }}>
-                    {student.status}
-                  </span>
-                </div>
-                <div style={{ marginLeft: "12px", color: "#cbd5e1", fontSize: "18px" }}>›</div>
+        {/* Header Row (Hidden if wrapped, but provides table structure on desktop) */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", padding: "16px", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#64748b", fontSize: "13px", fontWeight: 600, textTransform: "uppercase" }}>
+          <div style={{ flex: "2 1 200px" }}>Student Name</div>
+          <div style={{ flex: "1 1 100px" }}>Grade</div>
+          <div style={{ flex: "1 1 100px" }}>Status</div>
+          <div style={{ flex: "1 1 80px", textAlign: "right" }}>Action</div>
+        </div>
+
+        {/* Data Rows (Wraps automatically on small screens) */}
+        {students.map((student) => (
+          <div key={student.id} style={{ display: "flex", flexWrap: "wrap", gap: "16px", padding: "16px", borderBottom: "1px solid #f1f5f9", alignItems: "center" }}>
+            
+            <div style={{ flex: "2 1 200px", minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {student.first_name} {student.last_name}
               </div>
-            );
-          })}
-        </div>
+              <div style={{ fontSize: "12px", color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {student.guardian_email || "No Email on File"}
+              </div>
+            </div>
 
-      ) : (
+            <div style={{ flex: "1 1 100px", fontSize: "14px", color: "#475569" }}>
+              {student.grade_level || "N/A"}
+            </div>
 
-        /* --- DESKTOP VIEW --- */
-        <div style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Student Name</th>
-                <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Grade</th>
-                <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Status</th>
-                <th style={{ padding: "16px", fontSize: "13px", color: "#64748b", textAlign: "right" }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                  <td style={{ padding: "16px" }}>
-                    <div style={{ fontWeight: 600 }}>{student.first_name} {student.last_name}</div>
-                    <div style={{ fontSize: "12px", color: "#94a3b8" }}>{student.guardian_email}</div>
-                  </td>
-                  <td style={{ padding: "16px", fontSize: "14px" }}>{student.grade_level}</td>
-                  <td style={{ padding: "16px" }}>
-                    <span style={{ padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, backgroundColor: getStatusColor(student.status).bg, color: getStatusColor(student.status).text }}>
-                      {student.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: "16px", textAlign: "right" }}>
-                    <button onClick={() => router.push(`/students/${student.id}`)} style={{ background: "none", border: "none", color: "#007bff", cursor: "pointer", fontWeight: 600 }}>
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            <div style={{ flex: "1 1 100px" }}>
+              <span style={{ padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, backgroundColor: getStatusColor(student.status).bg, color: getStatusColor(student.status).text }}>
+                {student.status}
+              </span>
+            </div>
 
-      )}
+            <div style={{ flex: "1 1 80px", textAlign: "right" }}>
+              <button onClick={() => router.push(`/students/${student.id}`)} style={{ background: "none", border: "none", color: "#007bff", cursor: "pointer", fontWeight: 600 }}>
+                View
+              </button>
+            </div>
+            
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
