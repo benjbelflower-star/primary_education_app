@@ -118,8 +118,8 @@ export default function NewTutorForm() {
         </div>
 
         <div style={{ backgroundColor: "white", padding: 20, borderRadius: 8, border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+            <div style={{ flex: "1 1 200px" }}>
               <label style={labelStyle}>Full Name</label>
               <input required value={fullName} onChange={(e) => setFullName(e.target.value)} style={inputStyle} />
             </div>

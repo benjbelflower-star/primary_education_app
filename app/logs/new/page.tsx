@@ -93,8 +93,8 @@ export default function LogService() {
           </select>
         </div>
 
-        <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-          <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+          <div style={{ flex: "1 1 200px" }}>
             <label style={labelStyle}>Date of Service</label>
             <input required type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} style={inputStyle} />
           </div>

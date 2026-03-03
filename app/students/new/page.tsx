@@ -43,7 +43,6 @@ export default function AddNewStudent() {
     }
   }
 
-  // Notice boxSizing: "border-box" is included to prevent overflow
   const inputStyle: React.CSSProperties = { 
     padding: "12px", 
     borderRadius: "6px", 
@@ -79,9 +78,9 @@ export default function AddNewStudent() {
       <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
           
-          {/* Using responsive-grid to stack these on mobile */}
-          <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-            <div>
+          {/* THE FIX: Using flexWrap guarantees they stack on mobile screens */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+            <div style={{ flex: "1 1 200px" }}>
               <label style={labelStyle}>First Name</label>
               <input 
                 required 
@@ -91,7 +90,7 @@ export default function AddNewStudent() {
                 style={inputStyle} 
               />
             </div>
-            <div>
+            <div style={{ flex: "1 1 200px" }}>
               <label style={labelStyle}>Last Name</label>
               <input 
                 required 
