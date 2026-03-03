@@ -120,8 +120,8 @@ export default function TutorDetailView() {
             </div>
             <div style={{ marginBottom: "15px" }}>
               <div style={{ fontSize: "12px", color: "#999", fontWeight: 700, textTransform: "uppercase" }}>Expiration Date</div>
-              <div style={{ fontSize: "14px", color: tutor.expiration_date && new Date(tutor.expiration_date) < new Date() ? "#c53030" : "inherit" }}>
-                {tutor.expiration_date || "No expiration"}
+              <div style={{ fontSize: "14px", color: tutor.credential_expiration && new Date(tutor.credential_expiration) < new Date() ? "#c53030" : "inherit" }}>
+                {tutor.credential_expiration || "No expiration"}
               </div>
             </div>
             {tutor.credential_url && (
