@@ -1,144 +1,134 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
-import { Student, Tutor } from "../../../types";
 
-// 1. PLACE THE CATEGORY LIST HERE (Outside the component function)
-const ESA_CATEGORIES = [
-  "530 Coverdell Plan",
-  "Assistive Technology Rental",
-  "Braille Transition Services",
-  "Curricula and Supplemental Materials",
-  "Educational and/or Psychological Evaluations",
-  "Educational Therapies and Services",
-  "ESA Bank Fees",
-  "Online Private Program Expenses",
-  "Paraprofessional Services",
-  "Postsecondary Institution (College) Expenses",
-  "Private School Expenses",
-  "Public School Tuition Expenses",
-  "Testing Fees",
-  "Tutoring Services",
-  "Vocational / Life Skills Education",
-  "Other Goods and Services"
-];
-
-export default function NewServiceLog() {
+export default function LogService() {
+  const router = useRouter();
   const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
-  const [students, setStudents] = useState<Student[]>([]);
-  const [tutors, setTutors] = useState<Tutor[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [tutors, setTutors] = useState<any[]>([]);
   
-  // Form State
-  const [studentId, setStudentId] = useState("");
-  const [tutorId, setTutorId] = useState("");
-  const [serviceDate, setServiceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [description, setDescription] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedTutor, setSelectedTutor] = useState("");
+  const [serviceDate, setServiceDate] = useState("");
   const [hours, setHours] = useState("");
-  const [esaCategory, setEsaCategory] = useState(""); // This state links to the dropdown
+  const [description, setDescription] = useState("");
   
-  const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    async function loadData() {
-      const { data: st } = await supabase.from("students").select("id, first_name, last_name, grade_level").eq("school_id", PROTOTYPE_SCHOOL_ID);
-      const { data: tu } = await supabase.from("tutors").select("id, full_name").eq("school_id", PROTOTYPE_SCHOOL_ID).eq("is_active", true);
-      if (st) setStudents(st as Student[]);
-      if (tu) setTutors(tu as Tutor[]);
+    async function loadDropdowns() {
+      const { data: studentData } = await supabase.from("students").select("id, first_name, last_name").eq("school_id", PROTOTYPE_SCHOOL_ID).eq("status", "active");
+      const { data: tutorData } = await supabase.from("tutors").select("id, full_name").eq("school_id", PROTOTYPE_SCHOOL_ID).eq("is_active", true);
+      
+      if (studentData) setStudents(studentData);
+      if (tutorData) setTutors(tutorData);
     }
-    loadData();
+    loadDropdowns();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
-    setStatus("Saving log...");
+    setMessage("Logging service...");
 
-    const { error } = await supabase.from("service_logs").insert({
-      school_id: PROTOTYPE_SCHOOL_ID,
-      student_id: studentId,
-      tutor_id: tutorId,
-      service_date: serviceDate,
-      service_description: description,
-      hours: parseFloat(hours),
-      esa_category: esaCategory
-    });
+    const { error } = await supabase
+      .from("service_logs")
+      .insert({
+        school_id: PROTOTYPE_SCHOOL_ID,
+        student_id: selectedStudent,
+        tutor_id: selectedTutor,
+        service_date: serviceDate,
+        hours: parseFloat(hours),
+        service_description: description
+      });
 
-    if (error) setStatus(`Error: ${error.message}`);
-    else {
-      setStatus("Service log saved successfully!");
-      setDescription(""); setHours(""); setEsaCategory("");
+    if (error) {
+      setMessage(`Error: ${error.message}`);
+      setIsSubmitting(false);
+    } else {
+      setMessage("Service logged successfully!");
+      setTimeout(() => router.push("/"), 1500);
     }
-    setIsSubmitting(false);
   }
 
-  const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: "14px", display: "block", marginBottom: "4px" };
-  const inputStyle: React.CSSProperties = { padding: "10px", borderRadius: "6px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box" };
+  const labelStyle = { fontWeight: 600, fontSize: 13, marginBottom: 6, display: "block", color: "#475569", textTransform: "uppercase" as const };
+  const inputStyle = { padding: "12px", borderRadius: 6, border: "1px solid #cbd5e1", width: "100%", boxSizing: "border-box" as const, fontSize: "15px", backgroundColor: "white" };
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, fontFamily: "system-ui" }}>
-      <h1>Log Daily Tutoring Service</h1>
-      
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 20 }}>
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px", fontFamily: "system-ui" }}>
+      <button 
+        onClick={() => router.push("/")} 
+        style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, fontWeight: 600, marginBottom: "24px" }}
+      >
+        ← Back to Dashboard
+      </button>
+
+      <h1 style={{ fontSize: "28px", margin: "0 0 8px 0", color: "#0f172a" }}>Log Service</h1>
+      <p style={{ color: "#64748b", marginBottom: "24px", fontSize: "14px" }}>Record educational hours for ESA billing.</p>
+
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px", backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+        
         <div>
           <label style={labelStyle}>Student</label>
-          <select required value={studentId} onChange={e => setStudentId(e.target.value)} style={inputStyle}>
-            <option value="">Select Student...</option>
-            {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name} (Grade: {s.grade_level})</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label style={labelStyle}>Tutor</label>
-          <select required value={tutorId} onChange={e => setTutorId(e.target.value)} style={inputStyle}>
-            <option value="">Select Tutor...</option>
-            {tutors.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
-          </select>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-          <div>
-            <label style={labelStyle}>Service Date</label>
-            <input type="date" required value={serviceDate} onChange={e => setServiceDate(e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Hours</label>
-            <input type="number" min="0.0"step="0.25" required value={hours} onChange={e => setHours(e.target.value)} style={inputStyle} placeholder="e.g. 1.5" />
-          </div>
-        </div>
-
-        {/* 2. UPDATE THIS FIELD: ESA Category Dropdown */}
-        <div>
-          <label style={labelStyle}>ESA Category</label>
-          <select 
-            required 
-            value={esaCategory} 
-            onChange={(e) => setEsaCategory(e.target.value)} 
-            style={inputStyle}
-          >
-            <option value="">Select a Category...</option>
-            {ESA_CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
+          <select required value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} style={inputStyle}>
+            <option value="">Select a student...</option>
+            {students.map(s => (
+              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
             ))}
           </select>
         </div>
 
         <div>
+          <label style={labelStyle}>Provider / Tutor</label>
+          <select required value={selectedTutor} onChange={e => setSelectedTutor(e.target.value)} style={inputStyle}>
+            <option value="">Select a provider...</option>
+            {tutors.map(t => (
+              <option key={t.id} value={t.id}>{t.full_name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <div>
+            <label style={labelStyle}>Date of Service</label>
+            <input required type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Total Hours</label>
+            <input required type="number" step="0.25" min="0.25" value={hours} onChange={e => setHours(e.target.value)} style={inputStyle} placeholder="e.g. 1.5" />
+          </div>
+        </div>
+
+        <div>
           <label style={labelStyle}>Service Description</label>
-          <textarea required value={description} onChange={e => setDescription(e.target.value)} style={{ ...inputStyle, height: 80 }} placeholder="What was covered during the session?" />
+          <textarea 
+            required 
+            rows={3}
+            value={description} 
+            onChange={e => setDescription(e.target.value)} 
+            style={{ ...inputStyle, resize: "vertical" }} 
+            placeholder="Describe the educational services provided..."
+          />
         </div>
 
         <button 
-          disabled={isSubmitting} 
-          style={{ padding: 14, backgroundColor: "#007bff", color: "white", border: "none", borderRadius: 6, fontWeight: 700, cursor: "pointer" }}
+          type="submit" 
+          disabled={isSubmitting}
+          style={{ padding: "14px", backgroundColor: "#0f172a", color: "white", borderRadius: 8, border: "none", fontWeight: 600, cursor: isSubmitting ? "not-allowed" : "pointer", marginTop: "8px", fontSize: "16px" }}
         >
-          {isSubmitting ? "Saving..." : "Save Service Log"}
+          {isSubmitting ? "Saving..." : "Submit Log"}
         </button>
-        {status && <p style={{ textAlign: "center", fontWeight: 600 }}>{status}</p>}
+
+        {message && (
+          <div style={{ padding: "12px", borderRadius: 6, textAlign: "center", fontWeight: 600, backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4", color: message.includes("Error") ? "#c53030" : "#16a34a" }}>
+            {message}
+          </div>
+        )}
       </form>
     </div>
   );
