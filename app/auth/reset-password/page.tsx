@@ -12,26 +12,27 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) {
-        setReady(true);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "PASSWORD_RECOVERY" || session) {
+          setReady(true);
+        }
       }
-    }
-  );
+    );
 
-  // Also handle token in URL directly
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) setReady(true);
-  });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setReady(true);
+    });
 
-  return () => subscription.unsubscribe();
-}, []);
+    return () => subscription.unsubscribe();
+  }, []);
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
@@ -88,28 +89,46 @@ export default function ResetPasswordPage() {
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
                 New Password
               </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                className={inputClass}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-semibold"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
                 Confirm Password
               </label>
-              <input
-                type="password"
-                required
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                placeholder="Re-enter your password"
-                className={inputClass}
-              />
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  required
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  placeholder="Re-enter your password"
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-semibold"
+                >
+                  {showConfirm ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -137,6 +156,3 @@ export default function ResetPasswordPage() {
     </div>
   );
 }
-// Then you need to tell Supabase to send the reset link to this page instead of your home page. In your **Supabase dashboard → Authentication → URL Configuration**, set the **Site URL** to your Vercel URL and add this to **Redirect URLs**:
-// https://your-vercel-url.vercel.app/auth/reset-password
-// Also add the local version for development: http://localhost:3000/auth/reset-password
