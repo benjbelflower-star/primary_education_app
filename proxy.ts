@@ -25,9 +25,10 @@ export async function proxy(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  const isLoginPage = req.nextUrl.pathname === "/login";
+const isLoginPage = req.nextUrl.pathname === "/login";
+const isResetPage = req.nextUrl.pathname === "/auth/reset-password";
 
-  if (!session && !isLoginPage) {
+  if (!session && !isLoginPage && !isResetPage) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
