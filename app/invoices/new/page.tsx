@@ -112,7 +112,7 @@ useEffect(() => {
       for (const log of filteredLogs) {
         const { data: lineItem, error: liError } = await supabase
           .from("invoice_line_items")
-          .insert({ invoice_id: invoice.id, description: log.service_description, amount: log.hours * Number(hourlyRate), esa_category: log.esa_category, service_date_start: log.service_date })
+          .insert({ school_id: schoolId, invoice_id: invoice.id, description: log.service_description, amount: log.hours * Number(hourlyRate), esa_category: log.esa_category, service_date_start: log.service_date })
           .select().single();
         if (liError) throw liError;
         await supabase.from("service_logs").update({ invoice_line_item_id: lineItem.id }).eq("id", log.id);
