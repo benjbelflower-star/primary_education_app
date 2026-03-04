@@ -138,6 +138,12 @@ useEffect(() => {
 
   return (
     <div className="px-4 py-8 sm:px-8 sm:py-10 max-w-4xl mx-auto font-sans">
+      <button
+        onClick={() => router.push("/")}
+        className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors block"
+      >
+        ← Back to Dashboard
+      </button>
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Create Tutoring Invoice</h1>
       <p className="text-gray-500 text-sm mb-8">Bundle unbilled service logs into a ClassWallet-ready invoice.</p>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { Student } from "../../../types";
 
@@ -9,6 +10,7 @@ function cx(...classes: (string | false | null | undefined)[]) {
 }
 
 export default function NewBillingAccount() {
+  const router = useRouter();
   const [guardianName, setGuardianName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -74,6 +76,12 @@ export default function NewBillingAccount() {
 
   return (
     <div className="px-4 py-8 sm:px-8 max-w-2xl mx-auto font-sans">
+      <button
+        onClick={() => router.push("/billing")}
+        className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors block"
+      >
+        ← Back to Billing
+      </button>
       <h1 className="text-2xl font-bold text-gray-900 mb-1">New Billing Account</h1>
       <p className="text-gray-500 text-sm mb-6">Create a guardian profile to manage ClassWallet payments.</p>
 

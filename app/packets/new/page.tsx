@@ -72,6 +72,12 @@ export default function NewPacketPage() {
 
   return (
     <div className="px-4 py-8 sm:px-8 max-w-4xl mx-auto font-sans">
+      <button
+        onClick={() => router.push("/")}
+        className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors block"
+      >
+        ← Back to Dashboard
+      </button>
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Generate Claim Packet</h1>
       <p className="text-gray-500 text-sm mb-6">Select an invoice to bundle it with student data and tutor credentials.</p>
 

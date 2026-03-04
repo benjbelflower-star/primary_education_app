@@ -78,6 +78,12 @@ export default function TutorDetailView() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-8">
         <div>
+          <button
+            onClick={() => router.push("/tutors")}
+            className="text-blue-500 font-semibold text-sm mb-3 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors block"
+          >
+            ← Back to Roster
+          </button>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
             {tutor.full_name}
           </h1>

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import ClassWalletSummary from "../../../components/ClassWalletSummary";
 import { Invoice, Tutor, ServiceLog, ClaimPacket, Student, InvoiceLineItem } from "../../../types";
 
 export default function PacketReviewPage() {
   const { id } = useParams();
+  const router = useRouter();
   const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
   const [packet, setPacket] = useState<ClaimPacket | null>(null);
@@ -87,6 +88,13 @@ export default function PacketReviewPage() {
 
   return (
     <div id="print-area" style={containerStyle}>
+      <button
+        className="print:hidden"
+        onClick={() => router.back()}
+        style={{ background: "none", border: "none", color: "#3b82f6", fontWeight: 600, fontSize: "14px", cursor: "pointer", padding: 0, marginBottom: "20px", display: "block" }}
+      >
+        ← Back
+      </button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "30px" }}>
         <h1>Claim Packet Review</h1>
         <span style={{ 
