@@ -13,7 +13,7 @@ export default function ClassWalletSummary({ invoice, tutor }: { invoice: Invoic
   const contactString = [tutorEmail, tutorPhone].filter(c => c !== "N/A").join(" | ") || "N/A";
 
   return (
-    <div id="print-area" style={{ padding: 40, fontFamily: "system-ui" }}>
+    <div style={{ padding: 40, fontFamily: "system-ui" }}>
       <h1 style={{ marginBottom: 4 }}>{vendor}</h1>
       <div style={{ opacity: 0.8, marginBottom: 18 }}>ClassWallet Ready Summary (Tutoring)</div>
 
