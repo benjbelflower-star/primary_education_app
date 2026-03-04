@@ -20,7 +20,7 @@ export default function NewInvoiceForm() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [selectedTutorId, setSelectedTutorId] = useState("");
   const [hourlyRate, setHourlyRate] = useState<number | "">("");
-  const [invoiceNumber, setInvoiceNumber] = useState("INV-" + Date.now().toString().slice(-6));
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [subject, setSubject] = useState("");
   const [transactionMethod, setTransactionMethod] = useState("Debit Card");
@@ -48,6 +48,26 @@ export default function NewInvoiceForm() {
   }, []);
 
   const selectedStudent = useMemo(() => students.find(s => s.id === selectedStudentId), [selectedStudentId, students]);
+
+useEffect(() => {
+  async function generateInvoiceNumber() {
+    if (!selectedStudentId) {
+      setInvoiceNumber("");
+      return;
+    }
+
+    const last4 = selectedStudentId.replace(/-/g, "").slice(-4).toUpperCase();
+
+    const { data: existing } = await supabase
+      .from("invoices")
+      .select("id")
+      .eq("student_id", selectedStudentId);
+
+    const nextNum = ((existing?.length || 0) + 1).toString().padStart(3, "0");
+    setInvoiceNumber(last4 + "." + nextNum);
+  }
+  generateInvoiceNumber();
+}, [selectedStudentId]);
   const filteredLogs = useMemo(() => unbilledLogs.filter(l => l.student_id === selectedStudentId && l.tutor_id === selectedTutorId), [unbilledLogs, selectedStudentId, selectedTutorId]);
   const totalHours = filteredLogs.reduce((sum, log) => sum + Number(log.hours), 0);
   const calculatedTotal = hourlyRate ? totalHours * Number(hourlyRate) : 0;
