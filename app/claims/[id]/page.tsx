@@ -4,191 +4,200 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 
-export default function ClaimPacketView() {
+type Packet = { id: string; status: string; notes: string; created_at: string; student_id: string; };
+type Student = { id: string; first_name: string; last_name: string; grade_level: string; };
+type LineItem = { id: string; description: string; quantity: number; unit_price: number; amount: number; service_date_start: string; esa_category: string; };
+type Invoice = { id: string; invoice_number: string; issue_date: string; total: number; notes: string; line_items: LineItem[]; };
+
+export default function ClaimPacketReview() {
   const { id } = useParams();
   const router = useRouter();
-  
-  const [packet, setPacket] = useState<any>(null);
+
+  const [packet, setPacket] = useState<Packet | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    async function loadPacketData() {
+    async function load() {
       if (!id) return;
 
-      const { data, error } = await supabase
-        .from("claim_packets")
-        .select(`
-          id,
-          status,
-          created_at,
-          invoices (
-            invoice_number,
-            issue_date,
-            total,
-            student_grade_level,
-            students (first_name, last_name),
-            tutors (full_name, credential_type),
-            invoice_line_items (
-              id,
-              description,
-              amount,
-              esa_category,
-              service_date_start
-            )
-          )
-        `)
+      const { data: pkt } = await supabase
+        .from("esa_claim_packets")
+        .select("*")
         .eq("id", id)
         .single();
 
-      if (error) {
-        setErrorMsg(`Error loading packet: ${error.message}`);
-      } else {
-        setPacket(data);
+      if (!pkt) { setLoading(false); return; }
+      setPacket(pkt as Packet);
+
+      const { data: studentData } = await supabase
+        .from("students")
+        .select("id, first_name, last_name, grade_level")
+        .eq("id", pkt.student_id)
+        .single();
+
+      if (studentData) setStudent(studentData as Student);
+
+      const { data: junctionData } = await supabase
+        .from("claim_packet_invoices")
+        .select("invoice_id")
+        .eq("claim_packet_id", id);
+
+      if (!junctionData || junctionData.length === 0) { setLoading(false); return; }
+
+      const invoiceIds = junctionData.map(j => j.invoice_id);
+
+      const { data: invoiceData } = await supabase
+        .from("invoices")
+        .select("id, invoice_number, issue_date, total, notes")
+        .in("id", invoiceIds)
+        .order("issue_date");
+
+      if (invoiceData) {
+        const withLineItems = await Promise.all(
+          invoiceData.map(async inv => {
+            const { data: items } = await supabase
+              .from("invoice_line_items")
+              .select("id, description, quantity, unit_price, amount, service_date_start, esa_category")
+              .eq("invoice_id", inv.id)
+              .order("service_date_start");
+            return { ...inv, line_items: items || [] };
+          })
+        );
+        setInvoices(withLineItems as Invoice[]);
       }
+
       setLoading(false);
     }
-    loadPacketData();
+    load();
   }, [id]);
 
-  if (loading) return <div style={{ padding: 60, fontFamily: "system-ui" }}>Loading claim packet...</div>;
-  if (errorMsg) return <div style={{ padding: 60, color: "red" }}>{errorMsg}</div>;
-  if (!packet || !packet.invoices) return <div style={{ padding: 60 }}>Packet data is incomplete.</div>;
+  async function markAsSubmitted() {
+    if (!packet) return;
+    setIsUpdating(true);
+    await supabase
+      .from("esa_claim_packets")
+      .update({ status: "submitted", submission_date: new Date().toISOString().split("T")[0] })
+      .eq("id", packet.id);
+    setPacket({ ...packet, status: "submitted" });
+    setIsUpdating(false);
+  }
 
-  const invoice = packet.invoices;
-  const lineItems = invoice.invoice_line_items || [];
+  const grandTotal = invoices.reduce((sum, inv) => sum + Number(inv.total), 0);
 
-  const sectionStyle: React.CSSProperties = {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "8px",
-    border: "1px solid #e2e8f0",
-    marginBottom: "20px"
-  };
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-gray-400 text-sm">Loading claim packet...</p>
+    </div>
+  );
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: "11px",
-    color: "#64748b",
-    textTransform: "uppercase",
-    fontWeight: 700,
-    marginBottom: "4px"
-  };
-
-  const valueStyle: React.CSSProperties = {
-    fontSize: "15px",
-    fontWeight: 600,
-    color: "#0f172a"
-  };
+  if (!packet) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-gray-400 text-sm">Packet not found.</p>
+    </div>
+  );
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px", fontFamily: "system-ui" }}>
-      
-      {/* Mobile-Friendly Header */}
-      <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <button onClick={() => router.push("/tutors")} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, fontWeight: 600 }}>
-          ← Back
-        </button>
-        <button 
-          onClick={() => window.print()}
-          style={{ padding: "10px 16px", backgroundColor: "#0f172a", color: "white", borderRadius: "8px", border: "none", fontWeight: 600, fontSize: "14px" }}
+    <div className="px-4 py-8 sm:px-8 max-w-4xl mx-auto font-sans">
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 print:hidden">
+        <button
+          onClick={() => router.push("/claims/new")}
+          className="text-blue-500 font-semibold text-sm bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors"
         >
-          Print / PDF
+          Back to Claims
         </button>
+        <div className="flex gap-3">
+          {packet.status === "draft" && (
+            <button
+              onClick={markAsSubmitted}
+              disabled={isUpdating}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer border-none"
+            >
+              {isUpdating ? "Updating..." : "Mark as Submitted"}
+            </button>
+          )}
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer border-none"
+          >
+            Print / Download
+          </button>
+        </div>
       </div>
 
-      <div id="printable-packet" style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-        
-        {/* Document Status Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #f1f5f9", paddingBottom: "16px", marginBottom: "24px" }}>
+      <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8">
+
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-8 pb-6 border-b border-gray-100">
           <div>
-            <h1 style={{ margin: 0, fontSize: "22px", color: "#0f172a" }}>ESA Claim Summary</h1>
-            <div style={{ color: "#94a3b8", fontSize: "12px" }}>ID: {packet.id.slice(0, 8)}</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">ESA Claim Packet</h1>
+            <p className="text-gray-500 text-sm">{packet.notes}</p>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={labelStyle}>Status</div>
-            <div style={{ fontSize: "16px", fontWeight: 800, color: packet.status === "Draft" ? "#ca8a04" : "#16a34a" }}>
-              {packet.status}
-            </div>
+          <span className={packet.status === "submitted"
+            ? "mt-3 sm:mt-0 px-3 py-1 rounded-full text-xs font-bold uppercase bg-teal-50 text-teal-700"
+            : "mt-3 sm:mt-0 px-3 py-1 rounded-full text-xs font-bold uppercase bg-yellow-50 text-yellow-700"
+          }>
+            {packet.status}
+          </span>
+        </div>
+
+        <div className="mb-8">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Student Information</div>
+          <div className="text-gray-900 font-semibold">{student?.first_name} {student?.last_name}</div>
+          <div className="text-gray-500 text-sm">Grade {student?.grade_level}</div>
+        </div>
+
+        <div className="mb-8">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">Invoices</div>
+          <div className="flex flex-col gap-6">
+            {invoices.map(inv => (
+              <div key={inv.id} className="border border-gray-100 rounded-lg overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b border-gray-100">
+                  <div>
+                    <span className="font-bold text-gray-900 text-sm">{inv.invoice_number}</span>
+                    <span className="text-gray-400 text-xs ml-3">{inv.issue_date}</span>
+                  </div>
+                  <span className="font-bold text-gray-900">${Number(inv.total).toFixed(2)}</span>
+                </div>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="text-left border-b border-gray-100">
+                      <th className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">Date</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">Description</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Hrs</th>
+                      <th className="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Rate</th>
+                      <th className="px-2 py-2 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inv.line_items.map(item => (
+                      <tr key={item.id} className="border-b border-gray-50">
+                        <td className="px-4 py-2 text-xs text-gray-600 whitespace-nowrap">{item.service_date_start}</td>
+                        <td className="px-2 py-2 text-xs text-gray-700">{item.description}</td>
+                        <td className="px-2 py-2 text-xs text-gray-600 text-right">{item.quantity}</td>
+                        <td className="px-2 py-2 text-xs text-gray-600 text-right">${Number(item.unit_price).toFixed(2)}</td>
+                        <td className="px-2 py-2 pr-4 text-xs font-semibold text-gray-900 text-right">${Number(item.amount).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* 1. COMPLIANCE CHECKLIST (New A-ha Section) */}
-        <div style={{ ...sectionStyle, backgroundColor: "#f8fafc", borderColor: "#cbd5e1" }}>
-          <h3 style={{ marginTop: 0, fontSize: "14px", color: "#334155", borderBottom: "1px solid #cbd5e1", paddingBottom: "10px", marginBottom: "12px" }}>
-            Automated Compliance Check
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-              <span>Provider Credential Valid</span>
-              <span style={{ color: "#16a34a", fontWeight: 700 }}>✓ VERIFIED</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-              <span>ESA Eligibility Category</span>
-              <span style={{ color: "#16a34a", fontWeight: 700 }}>✓ MATCHED</span>
-            </div>
-          </div>
+        <div className="flex justify-between items-center pt-6 border-t-2 border-gray-200">
+          <span className="font-bold text-gray-900">Grand Total</span>
+          <span className="text-3xl font-extrabold text-teal-700">${grandTotal.toFixed(2)}</span>
         </div>
 
-        {/* 2. Detail Grids (Responsive) */}
-        <div className="responsive-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-          <div style={sectionStyle}>
-            <div style={labelStyle}>Student</div>
-            <div style={valueStyle}>{invoice.students?.first_name} {invoice.students?.last_name}</div>
-            <div style={{ ...labelStyle, marginTop: "12px" }}>Grade</div>
-            <div style={valueStyle}>{invoice.student_grade_level}</div>
-          </div>
-
-          <div style={sectionStyle}>
-            <div style={labelStyle}>Provider</div>
-            <div style={valueStyle}>{invoice.tutors?.full_name}</div>
-            <div style={{ ...labelStyle, marginTop: "12px" }}>Credential</div>
-            <div style={valueStyle}>{invoice.tutors?.credential_type}</div>
-          </div>
+        <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400 text-center print:block">
+          Generated {new Date(packet.created_at).toLocaleDateString()} — Arizona ESA Program
         </div>
 
-        {/* 3. Service Breakdown */}
-        <div style={sectionStyle}>
-          <h3 style={{ marginTop: 0, fontSize: "14px", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>Service Breakdown</h3>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "400px" }}>
-              <thead>
-                <tr style={{ textAlign: "left", borderBottom: "2px solid #e2e8f0" }}>
-                  <th style={{ padding: "12px 0", color: "#64748b", fontSize: "11px", textTransform: "uppercase" }}>Date</th>
-                  <th style={{ padding: "12px 0", color: "#64748b", fontSize: "11px", textTransform: "uppercase" }}>Description</th>
-                  <th style={{ padding: "12px 0", color: "#64748b", fontSize: "11px", textTransform: "uppercase", textAlign: "right" }}>Amt</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lineItems.map((item: any) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "12px 0", fontSize: "13px" }}>{item.service_date_start}</td>
-                    <td style={{ padding: "12px 0", fontSize: "13px", color: "#475569" }}>{item.description}</td>
-                    <td style={{ padding: "12px 0", fontSize: "13px", textAlign: "right", fontWeight: 600 }}>${item.amount.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ textAlign: "right", marginTop: "20px", borderTop: "2px solid #0f172a", paddingTop: "12px" }}>
-            <div style={labelStyle}>Total Claim Amount</div>
-            <div style={{ fontSize: "24px", fontWeight: 800 }}>${invoice.total.toFixed(2)}</div>
-          </div>
-        </div>
-
-        <div style={{ textAlign: "center", color: "#94a3b8", fontSize: "11px", marginTop: "30px" }}>
-          Verification Timestamp: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}
-        </div>
       </div>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          body * { visibility: hidden; }
-          #printable-packet, #printable-packet * { visibility: visible; }
-          #printable-packet { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: none; padding: 0; }
-          .no-print { display: none !important; }
-        }
-      `}} />
     </div>
   );
 }
