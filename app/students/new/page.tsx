@@ -1,41 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 
+function cx(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
 export default function AddNewStudent() {
   const router = useRouter();
-  const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [gradeLevel, setGradeLevel] = useState("");
   const [guardianName, setGuardianName] = useState("");
   const [guardianEmail, setGuardianEmail] = useState("");
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+      if (userData) setSchoolId(userData.school_id);
+    }
+    load();
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!schoolId) return;
     setIsSubmitting(true);
     setMessage("Saving student profile...");
 
-    const { error } = await supabase
-      .from("students")
-      .insert({
-        school_id: PROTOTYPE_SCHOOL_ID,
-        first_name: firstName,
-        last_name: lastName,
-        grade_level: gradeLevel,
-        guardian_name: guardianName,
-        guardian_email: guardianEmail,
-        status: "active"
-      });
+    const { error } = await supabase.from("students").insert({
+      school_id: schoolId,
+      first_name: firstName,
+      last_name: lastName,
+      grade_level: gradeLevel,
+      guardian_name: guardianName,
+      guardian_email: guardianEmail,
+      status: "active",
+    });
 
     if (error) {
-      setMessage(`Error: ${error.message}`);
+      setMessage("Error: " + error.message);
       setIsSubmitting(false);
     } else {
       setMessage("Student added successfully! Redirecting...");
@@ -43,78 +55,78 @@ export default function AddNewStudent() {
     }
   }
 
-  const inputStyle: React.CSSProperties = { padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "100%", boxSizing: "border-box", fontSize: "15px" };
-  const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: "13px", display: "block", marginBottom: "6px", color: "#475569", textTransform: "uppercase" };
+  const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1";
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px", fontFamily: "system-ui" }}>
-      <button onClick={() => router.push("/students")} style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, fontWeight: 600, marginBottom: "24px" }}>
+    <div className="px-4 py-8 sm:px-8 max-w-2xl mx-auto font-sans">
+      <button onClick={() => router.push("/students")} className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors">
         ← Back to Roster
       </button>
 
-      <h1 style={{ fontSize: "28px", margin: "0 0 8px 0", color: "#0f172a" }}>Add New Student</h1>
-      <p style={{ color: "#64748b", marginBottom: "30px", fontSize: "14px" }}>Create a new student profile for ESA tracking.</p>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Add New Student</h1>
+      <p className="text-gray-500 text-sm mb-6">Create a new student profile for ESA tracking.</p>
 
-      <div style={{ backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          
-          {/* Tailwind grid: 1 column on mobile, 2 on desktop */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label style={labelStyle}>First Name</label>
-              <input required type="text" value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Last Name</label>
-              <input required type="text" value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} />
-            </div>
-          </div>
-
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 flex flex-col gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label style={labelStyle}>Grade Level</label>
-            <select required value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} style={inputStyle}>
-              <option value="">Select Grade...</option>
-              <option value="Kindergarten">Kindergarten</option>
-              <option value="1st Grade">1st Grade</option>
-              <option value="2nd Grade">2nd Grade</option>
-              <option value="3rd Grade">3rd Grade</option>
-              <option value="4th Grade">4th Grade</option>
-              <option value="5th Grade">5th Grade</option>
-              <option value="6th Grade">6th Grade</option>
-              <option value="7th Grade">7th Grade</option>
-              <option value="8th Grade">8th Grade</option>
-              <option value="9th Grade">9th Grade</option>
-              <option value="10th Grade">10th Grade</option>
-              <option value="11th Grade">11th Grade</option>
-              <option value="12th Grade">12th Grade</option>
-            </select>
+            <label className={labelClass}>First Name</label>
+            <input required type="text" value={firstName} onChange={e => setFirstName(e.target.value)} className={inputClass} />
           </div>
+          <div>
+            <label className={labelClass}>Last Name</label>
+            <input required type="text" value={lastName} onChange={e => setLastName(e.target.value)} className={inputClass} />
+          </div>
+        </div>
 
-          <div style={{ padding: "16px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", marginTop: "8px" }}>
-            <h3 style={{ marginTop: 0, marginBottom: "16px", fontSize: "14px", color: "#0f172a" }}>Guardian Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label style={labelStyle}>Guardian Name</label>
-                <input type="text" value={guardianName} onChange={e => setGuardianName(e.target.value)} style={inputStyle} placeholder="e.g. Jane Doe" />
-              </div>
-              <div>
-                <label style={labelStyle}>Guardian Email</label>
-                <input type="email" value={guardianEmail} onChange={e => setGuardianEmail(e.target.value)} style={inputStyle} placeholder="jane.doe@example.com" />
-              </div>
+        <div>
+          <label className={labelClass}>Grade Level</label>
+          <select required value={gradeLevel} onChange={e => setGradeLevel(e.target.value)} className={inputClass}>
+            <option value="">Select Grade...</option>
+            <option value="Kindergarten">Kindergarten</option>
+            <option value="1st Grade">1st Grade</option>
+            <option value="2nd Grade">2nd Grade</option>
+            <option value="3rd Grade">3rd Grade</option>
+            <option value="4th Grade">4th Grade</option>
+            <option value="5th Grade">5th Grade</option>
+            <option value="6th Grade">6th Grade</option>
+            <option value="7th Grade">7th Grade</option>
+            <option value="8th Grade">8th Grade</option>
+            <option value="9th Grade">9th Grade</option>
+            <option value="10th Grade">10th Grade</option>
+            <option value="11th Grade">11th Grade</option>
+            <option value="12th Grade">12th Grade</option>
+          </select>
+        </div>
+
+        <div className="bg-slate-50 rounded-lg border border-gray-200 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Guardian Information</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Guardian Name</label>
+              <input type="text" value={guardianName} onChange={e => setGuardianName(e.target.value)} className={inputClass} placeholder="e.g. Jane Doe" />
+            </div>
+            <div>
+              <label className={labelClass}>Guardian Email</label>
+              <input type="email" value={guardianEmail} onChange={e => setGuardianEmail(e.target.value)} className={inputClass} placeholder="jane.doe@example.com" />
             </div>
           </div>
+        </div>
 
-          <button type="submit" disabled={isSubmitting} style={{ padding: "14px", backgroundColor: "#0f172a", color: "white", border: "none", borderRadius: "8px", fontWeight: 600, fontSize: "16px", cursor: isSubmitting ? "not-allowed" : "pointer", marginTop: "12px" }}>
-            {isSubmitting ? "Saving..." : "Create Student"}
-          </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={cx("w-full py-3 rounded-lg text-white text-sm font-bold transition-colors mt-1", isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-700 cursor-pointer")}
+        >
+          {isSubmitting ? "Saving..." : "Create Student"}
+        </button>
 
-          {message && (
-            <div style={{ padding: "12px", borderRadius: "6px", textAlign: "center", fontSize: "14px", fontWeight: 600, backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4", color: message.includes("Error") ? "#c53030" : "#16a34a", border: `1px solid ${message.includes("Error") ? "#fecaca" : "#bbf7d0"}` }}>
-              {message}
-            </div>
-          )}
-        </form>
-      </div>
+        {message && (
+          <div className={message.includes("Error") ? "p-3 rounded-lg text-center text-sm font-semibold bg-red-50 text-red-700" : "p-3 rounded-lg text-center text-sm font-semibold bg-green-50 text-green-700"}>
+            {message}
+          </div>
+        )}
+      </form>
     </div>
   );
 }

@@ -4,122 +4,134 @@ import { useState, useEffect } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { Student } from "../../../types";
 
+function cx(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
 export default function NewBillingAccount() {
   const [guardianName, setGuardianName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-  
   const [status, setStatus] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
+  const [schoolId, setSchoolId] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadUnlinkedStudents() {
-      // Fetch students who don't have a billing account yet
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+      if (!userData) return;
+      setSchoolId(userData.school_id);
+
       const { data } = await supabase
         .from("students")
         .select("id, first_name, last_name, grade_level")
-        .eq("school_id", PROTOTYPE_SCHOOL_ID)
+        .eq("school_id", userData.school_id)
         .is("billing_account_id", null);
-      
+
       if (data) setAvailableStudents(data as Student[]);
     }
-    loadUnlinkedStudents();
+    load();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!schoolId) return;
     setIsSubmitting(true);
     setStatus("Creating account...");
 
     try {
-      // 1. Create the billing account
       const { data: account, error: accError } = await supabase
         .from("billing_accounts")
-        .insert({
-          school_id: PROTOTYPE_SCHOOL_ID,
-          guardian_name: guardianName,
-          email: email,
-          phone: phone,
-          status: 'active'
-        })
+        .insert({ school_id: schoolId, guardian_name: guardianName, email, phone, status: "active" })
         .select()
         .single();
 
       if (accError) throw accError;
 
-      // 2. Link the selected students to this account
       if (selectedStudentIds.length > 0) {
         const { error: linkError } = await supabase
           .from("students")
           .update({ billing_account_id: account.id })
           .in("id", selectedStudentIds);
-        
         if (linkError) throw linkError;
       }
 
       setStatus("Success: Billing account created and students linked.");
       setGuardianName(""); setEmail(""); setPhone(""); setSelectedStudentIds([]);
     } catch (err: any) {
-      setStatus(`Error: ${err.message}`);
+      setStatus("Error: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  const inputStyle: React.CSSProperties = { padding: "10px", borderRadius: "6px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box" };
-  const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: "14px", display: "block", marginBottom: "4px" };
+  const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1";
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "40px", fontFamily: "system-ui" }}>
-      <h1>New Billing Account</h1>
-      <p style={{ opacity: 0.7, marginBottom: "25px" }}>Create a guardian profile to manage ClassWallet payments.</p>
+    <div className="px-4 py-8 sm:px-8 max-w-2xl mx-auto font-sans">
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">New Billing Account</h1>
+      <p className="text-gray-500 text-sm mb-6">Create a guardian profile to manage ClassWallet payments.</p>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 flex flex-col gap-5">
         <div>
-          <label style={labelStyle}>Guardian Full Name</label>
-          <input required value={guardianName} onChange={e => setGuardianName(e.target.value)} style={inputStyle} placeholder="e.g. Robert Smith" />
+          <label className={labelClass}>Guardian Full Name</label>
+          <input required value={guardianName} onChange={e => setGuardianName(e.target.value)} className={inputClass} placeholder="e.g. Robert Smith" />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label style={labelStyle}>Email Address</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} placeholder="robert@example.com" />
+            <label className={labelClass}>Email Address</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} placeholder="robert@example.com" />
           </div>
           <div>
-            <label style={labelStyle}>Phone Number</label>
-            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} placeholder="(555) 000-0000" />
+            <label className={labelClass}>Phone Number</label>
+            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className={inputClass} placeholder="(555) 000-0000" />
           </div>
         </div>
 
-        <div style={{ border: "1px solid #eee", padding: "15px", borderRadius: "8px" }}>
-          <label style={labelStyle}>Link Students (Multi-select)</label>
-          <p style={{ fontSize: "12px", color: "#999", marginBottom: "10px" }}>Select the students this guardian is responsible for.</p>
-          <div style={{ maxHeight: "150px", overflowY: "auto" }}>
+        <div className="border border-gray-200 rounded-lg p-4">
+          <label className={labelClass}>Link Students</label>
+          <p className="text-xs text-gray-400 mb-3">Select the students this guardian is responsible for.</p>
+          <div className="max-h-40 overflow-y-auto flex flex-col gap-2">
             {availableStudents.map(s => (
-              <label key={s.id} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "5px 0", fontSize: "14px" }}>
-                <input 
-                  type="checkbox" 
-                  checked={selectedStudentIds.includes(s.id)} 
-                  onChange={(e) => {
+              <label key={s.id} className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedStudentIds.includes(s.id)}
+                  onChange={e => {
                     if (e.target.checked) setSelectedStudentIds([...selectedStudentIds, s.id]);
                     else setSelectedStudentIds(selectedStudentIds.filter(id => id !== s.id));
-                  }} 
+                  }}
                 />
                 {s.first_name} {s.last_name} (Grade: {s.grade_level})
               </label>
             ))}
-            {availableStudents.length === 0 && <div style={{ fontSize: "13px", color: "#ccc" }}>No unlinked students found.</div>}
+            {availableStudents.length === 0 && (
+              <p className="text-sm text-gray-300">No unlinked students found.</p>
+            )}
           </div>
         </div>
 
-        <button disabled={isSubmitting} style={{ padding: "14px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer" }}>
+        <button
+          disabled={isSubmitting}
+          className={cx(
+            "w-full py-3 rounded-lg text-white text-sm font-bold transition-colors",
+            isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+          )}
+        >
           {isSubmitting ? "Saving..." : "Create Account & Link Students"}
         </button>
-        {status && <p style={{ textAlign: "center", fontWeight: 600, fontSize: "14px" }}>{status}</p>}
+
+        {status && (
+          <div className={status.includes("Error") ? "p-3 rounded-lg text-center text-sm font-semibold bg-red-50 text-red-700" : "p-3 rounded-lg text-center text-sm font-semibold bg-green-50 text-green-700"}>
+            {status}
+          </div>
+        )}
       </form>
     </div>
   );

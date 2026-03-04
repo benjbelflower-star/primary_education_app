@@ -19,61 +19,56 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 export default function NewClaimPacket() {
   const router = useRouter();
-  const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [availableInvoices, setAvailableInvoices] = useState<InvoicePreview[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
-    async function loadInvoices() {
-      const { data: existingPackets } = await supabase
-        .from("claim_packets")
-        .select("invoice_id");
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+      if (!userData) return;
+      const sid = userData.school_id;
+      setSchoolId(sid);
 
+      const { data: existingPackets } = await supabase.from("claim_packets").select("invoice_id");
       const usedInvoiceIds = existingPackets?.map(p => p.invoice_id) || [];
 
       const { data, error } = await supabase
         .from("invoices")
         .select("id, invoice_number, issue_date, total, students (first_name, last_name, grade_level), tutors (full_name, credential_type)")
-        .eq("school_id", PROTOTYPE_SCHOOL_ID)
+        .eq("school_id", sid)
         .order("issue_date", { ascending: false });
 
       if (data && !error) {
-        const unusedInvoices = (data as any[]).filter(inv => !usedInvoiceIds.includes(inv.id));
-        setAvailableInvoices(unusedInvoices);
+        setAvailableInvoices((data as any[]).filter(inv => !usedInvoiceIds.includes(inv.id)));
       }
     }
-    loadInvoices();
+    load();
   }, []);
 
   const selectedInvoice = availableInvoices.find(inv => inv.id === selectedInvoiceId);
 
   async function handleGeneratePacket(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedInvoiceId) return;
-
+    if (!selectedInvoiceId || !schoolId) return;
     setIsSubmitting(true);
     setStatusMessage("Assembling Claim Packet...");
 
     try {
       const { data: packet, error: packetError } = await supabase
         .from("claim_packets")
-        .insert({
-          school_id: PROTOTYPE_SCHOOL_ID,
-          invoice_id: selectedInvoiceId,
-          status: "Draft",
-          submission_date: null,
-        })
+        .insert({ school_id: schoolId, invoice_id: selectedInvoiceId, status: "Draft", submission_date: null })
         .select()
         .single();
 
       if (packetError) throw packetError;
-
       setStatusMessage("Claim Packet assembled successfully!");
       setTimeout(() => router.push("/claims/" + packet.id), 1500);
-
     } catch (err: any) {
       setStatusMessage("Error: " + err.message);
       setIsSubmitting(false);
@@ -90,25 +85,14 @@ export default function NewClaimPacket() {
 
   return (
     <div className="px-4 py-8 sm:px-8 sm:py-10 max-w-4xl mx-auto font-sans">
-      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-        Assemble ESA Claim Packet
-      </h1>
-      <p className="text-gray-500 text-sm mb-8">
-        Select a generated invoice to bundle with tutor credentials and service logs for state submission.
-      </p>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Assemble ESA Claim Packet</h1>
+      <p className="text-gray-500 text-sm mb-8">Select a generated invoice to bundle with tutor credentials and service logs for state submission.</p>
 
       <div className="flex flex-col lg:grid lg:grid-cols-[1fr_320px] gap-8">
-
-        {/* Left Column: Form */}
         <form onSubmit={handleGeneratePacket} className="flex flex-col gap-6">
           <div>
             <label className={labelClass}>Select Generated Invoice</label>
-            <select
-              required
-              value={selectedInvoiceId}
-              onChange={e => setSelectedInvoiceId(e.target.value)}
-              className={inputClass}
-            >
+            <select required value={selectedInvoiceId} onChange={e => setSelectedInvoiceId(e.target.value)} className={inputClass}>
               <option value="">Choose an invoice...</option>
               {availableInvoices.map(inv => (
                 <option key={inv.id} value={inv.id}>
@@ -123,72 +107,41 @@ export default function NewClaimPacket() {
             disabled={isSubmitting || !selectedInvoiceId}
             className={cx(
               "w-full py-3 rounded-lg text-white text-sm font-bold transition-colors",
-              selectedInvoiceId && !isSubmitting
-                ? "bg-blue-600 hover:bg-blue-700 cursor-pointer"
-                : "bg-gray-300 cursor-not-allowed"
+              selectedInvoiceId && !isSubmitting ? "bg-blue-600 hover:bg-blue-700 cursor-pointer" : "bg-gray-300 cursor-not-allowed"
             )}
           >
             {isSubmitting ? "Assembling..." : "Generate Packet"}
           </button>
 
-          {statusMessage && (
-            <div className={getStatusClass(statusMessage)}>
-              {statusMessage}
-            </div>
-          )}
+          {statusMessage && <div className={getStatusClass(statusMessage)}>{statusMessage}</div>}
         </form>
 
-        {/* Right Column: Preview */}
         <div className="bg-slate-50 rounded-xl border border-gray-200 p-5 h-fit">
-          <h3 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">
-            Packet Preview
-          </h3>
-
+          <h3 className="text-base font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Packet Preview</h3>
           {selectedInvoice ? (
             <div className="flex flex-col gap-4">
               <div>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">
-                  Student
-                </div>
-                <div className="font-semibold text-gray-900">
-                  {selectedInvoice.students?.first_name} {selectedInvoice.students?.last_name}
-                </div>
-                <div className="text-sm text-slate-500">
-                  Grade {selectedInvoice.students?.grade_level}
-                </div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Student</div>
+                <div className="font-semibold text-gray-900">{selectedInvoice.students?.first_name} {selectedInvoice.students?.last_name}</div>
+                <div className="text-sm text-slate-500">Grade {selectedInvoice.students?.grade_level}</div>
               </div>
-
               <div>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">
-                  Provider / Tutor
-                </div>
-                <div className="font-semibold text-gray-900">
-                  {selectedInvoice.tutors?.full_name}
-                </div>
-                <div className="text-sm text-slate-500">
-                  {selectedInvoice.tutors?.credential_type}
-                </div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Provider / Tutor</div>
+                <div className="font-semibold text-gray-900">{selectedInvoice.tutors?.full_name}</div>
+                <div className="text-sm text-slate-500">{selectedInvoice.tutors?.credential_type}</div>
               </div>
-
               <div>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">
-                  Financials
-                </div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Financials</div>
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-sm text-gray-700">{selectedInvoice.invoice_number}</span>
-                  <span className="font-extrabold text-xl text-teal-700">
-                    ${selectedInvoice.total.toFixed(2)}
-                  </span>
+                  <span className="font-extrabold text-xl text-teal-700">${selectedInvoice.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-400 text-center my-10">
-              Select an invoice to preview packet details.
-            </p>
+            <p className="text-sm text-slate-400 text-center my-10">Select an invoice to preview packet details.</p>
           )}
         </div>
-
       </div>
     </div>
   );

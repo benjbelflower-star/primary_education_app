@@ -4,51 +4,58 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 
+function cx(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
 export default function LogService() {
   const router = useRouter();
-  const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
+  const [schoolId, setSchoolId] = useState<string | null>(null);
   const [students, setStudents] = useState<any[]>([]);
   const [tutors, setTutors] = useState<any[]>([]);
-  
   const [selectedStudent, setSelectedStudent] = useState("");
   const [selectedTutor, setSelectedTutor] = useState("");
   const [serviceDate, setServiceDate] = useState("");
   const [hours, setHours] = useState("");
   const [description, setDescription] = useState("");
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    async function loadDropdowns() {
-      const { data: studentData } = await supabase.from("students").select("id, first_name, last_name").eq("school_id", PROTOTYPE_SCHOOL_ID).eq("status", "active");
-      const { data: tutorData } = await supabase.from("tutors").select("id, full_name").eq("school_id", PROTOTYPE_SCHOOL_ID).eq("is_active", true);
-      
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+      if (!userData) return;
+      const sid = userData.school_id;
+      setSchoolId(sid);
+
+      const { data: studentData } = await supabase.from("students").select("id, first_name, last_name").eq("school_id", sid).eq("status", "active");
+      const { data: tutorData } = await supabase.from("tutors").select("id, full_name").eq("school_id", sid).eq("is_active", true);
       if (studentData) setStudents(studentData);
       if (tutorData) setTutors(tutorData);
     }
-    loadDropdowns();
+    load();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!schoolId) return;
     setIsSubmitting(true);
     setMessage("Logging service...");
 
-    const { error } = await supabase
-      .from("service_logs")
-      .insert({
-        school_id: PROTOTYPE_SCHOOL_ID,
-        student_id: selectedStudent,
-        tutor_id: selectedTutor,
-        service_date: serviceDate,
-        hours: parseFloat(hours),
-        service_description: description
-      });
+    const { error } = await supabase.from("service_logs").insert({
+      school_id: schoolId,
+      student_id: selectedStudent,
+      tutor_id: selectedTutor,
+      service_date: serviceDate,
+      hours: parseFloat(hours),
+      service_description: description,
+    });
 
     if (error) {
-      setMessage(`Error: ${error.message}`);
+      setMessage("Error: " + error.message);
       setIsSubmitting(false);
     } else {
       setMessage("Service logged successfully!");
@@ -56,77 +63,57 @@ export default function LogService() {
     }
   }
 
-  const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: "13px", marginBottom: "6px", display: "block", color: "#475569", textTransform: "uppercase" };
-  const inputStyle: React.CSSProperties = { padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1", width: "100%", boxSizing: "border-box", fontSize: "15px", backgroundColor: "white" };
+  const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white";
+  const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1";
 
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: "20px", fontFamily: "system-ui" }}>
-      <button 
-        onClick={() => router.push("/")} 
-        style={{ background: "none", border: "none", color: "#3b82f6", cursor: "pointer", padding: 0, fontWeight: 600, marginBottom: "24px" }}
-      >
+    <div className="px-4 py-8 sm:px-8 max-w-2xl mx-auto font-sans">
+      <button onClick={() => router.push("/")} className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors">
         ← Back to Dashboard
       </button>
 
-      <h1 style={{ fontSize: "28px", margin: "0 0 8px 0", color: "#0f172a" }}>Log Service</h1>
-      <p style={{ color: "#64748b", marginBottom: "24px", fontSize: "14px" }}>Record educational hours for ESA billing.</p>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Log Service</h1>
+      <p className="text-gray-500 text-sm mb-6">Record educational hours for ESA billing.</p>
 
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px", backgroundColor: "white", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-        
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 flex flex-col gap-5">
         <div>
-          <label style={labelStyle}>Student</label>
-          <select required value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} style={inputStyle}>
+          <label className={labelClass}>Student</label>
+          <select required value={selectedStudent} onChange={e => setSelectedStudent(e.target.value)} className={inputClass}>
             <option value="">Select a student...</option>
-            {students.map(s => (
-              <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-            ))}
+            {students.map(s => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
           </select>
         </div>
 
         <div>
-          <label style={labelStyle}>Provider / Tutor</label>
-          <select required value={selectedTutor} onChange={e => setSelectedTutor(e.target.value)} style={inputStyle}>
+          <label className={labelClass}>Provider / Tutor</label>
+          <select required value={selectedTutor} onChange={e => setSelectedTutor(e.target.value)} className={inputClass}>
             <option value="">Select a provider...</option>
-            {tutors.map(t => (
-              <option key={t.id} value={t.id}>{t.full_name}</option>
-            ))}
+            {tutors.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
           </select>
         </div>
 
-        {/* Tailwind grid: 1 column on mobile, 2 on desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label style={labelStyle}>Date of Service</label>
-            <input required type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} style={inputStyle} />
+            <label className={labelClass}>Date of Service</label>
+            <input required type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label style={labelStyle}>Total Hours</label>
-            <input required type="number" step="0.25" min="0.25" value={hours} onChange={e => setHours(e.target.value)} style={inputStyle} placeholder="e.g. 1.5" />
+            <label className={labelClass}>Total Hours</label>
+            <input required type="number" step="0.25" min="0.25" value={hours} onChange={e => setHours(e.target.value)} className={inputClass} placeholder="e.g. 1.5" />
           </div>
         </div>
 
         <div>
-          <label style={labelStyle}>Service Description</label>
-          <textarea 
-            required 
-            rows={3}
-            value={description} 
-            onChange={e => setDescription(e.target.value)} 
-            style={{ ...inputStyle, resize: "vertical" }} 
-            placeholder="Describe the educational services provided..."
-          />
+          <label className={labelClass}>Service Description</label>
+          <textarea required rows={3} value={description} onChange={e => setDescription(e.target.value)} className={inputClass + " resize-y"} placeholder="Describe the educational services provided..." />
         </div>
 
-        <button 
-          type="submit" 
-          disabled={isSubmitting}
-          style={{ padding: "14px", backgroundColor: "#0f172a", color: "white", borderRadius: "8px", border: "none", fontWeight: 600, cursor: isSubmitting ? "not-allowed" : "pointer", marginTop: "8px", fontSize: "16px" }}
-        >
+        <button type="submit" disabled={isSubmitting} className={cx("w-full py-3 rounded-lg text-white text-sm font-bold transition-colors mt-1", isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-700 cursor-pointer")}>
           {isSubmitting ? "Saving..." : "Submit Log"}
         </button>
 
         {message && (
-          <div style={{ padding: "12px", borderRadius: "6px", textAlign: "center", fontWeight: 600, backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4", color: message.includes("Error") ? "#c53030" : "#16a34a" }}>
+          <div className={message.includes("Error") ? "p-3 rounded-lg text-center text-sm font-semibold bg-red-50 text-red-700" : "p-3 rounded-lg text-center text-sm font-semibold bg-green-50 text-green-700"}>
             {message}
           </div>
         )}

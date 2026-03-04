@@ -27,8 +27,6 @@ export default function NewTutorForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [scanSuccess, setScanSuccess] = useState(false);
 
-  const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
-
   async function handleScan() {
     if (!credentialFile) {
       alert("Please select a file first.");
@@ -150,8 +148,13 @@ Return exactly this structure:
       }
     }
 
-    const { error } = await supabase.from("tutors").insert({
-      school_id: PROTOTYPE_SCHOOL_ID,
+    const { data: { user } } = await supabase.auth.getUser();
+if (!user) { setStatus("Error: Not logged in."); setIsSubmitting(false); return; }
+const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+if (!userData) { setStatus("Error: Could not find school."); setIsSubmitting(false); return; }
+
+const { error } = await supabase.from("tutors").insert({
+  school_id: userData.school_id,
       full_name: fullName,
       email,
       phone,

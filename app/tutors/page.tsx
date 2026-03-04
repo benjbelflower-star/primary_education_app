@@ -1,124 +1,111 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { Tutor } from "../../types";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function TutorManagement() {
   const router = useRouter();
   const [tutors, setTutors] = useState<(Tutor & { invoice_count: number })[]>([]);
   const [loading, setLoading] = useState(true);
-  const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
   useEffect(() => {
-    async function loadTutors() {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+      if (!userData) return;
+
       const { data: tutorData } = await supabase
         .from("tutors")
         .select("*, invoices(id)")
-        .eq("school_id", PROTOTYPE_SCHOOL_ID)
+        .eq("school_id", userData.school_id)
         .order("full_name");
 
       if (tutorData) {
-        const formatted = tutorData.map(t => ({
-          ...t,
-          invoice_count: t.invoices?.length || 0
-        }));
-        setTutors(formatted as any);
+        setTutors(tutorData.map(t => ({ ...t, invoice_count: t.invoices?.length || 0 })) as any);
       }
       setLoading(false);
     }
-    loadTutors();
+    load();
   }, []);
 
   async function toggleStatus(tutor: any) {
-    const { error } = await supabase
-      .from("tutors")
-      .update({ is_active: !tutor.is_active })
-      .eq("id", tutor.id);
-
-    if (!error) {
-      setTutors(prev => prev.map(t => t.id === tutor.id ? { ...t, is_active: !t.is_active } : t));
-    }
+    const { error } = await supabase.from("tutors").update({ is_active: !tutor.is_active }).eq("id", tutor.id);
+    if (!error) setTutors(prev => prev.map(t => t.id === tutor.id ? { ...t, is_active: !t.is_active } : t));
   }
 
-  const getCredentialStatus = (expirationDate: string | null | undefined) => {
-    if (!expirationDate) return { text: "No Expiration", color: "#64748b", bg: "#f1f5f9" };
-    const today = new Date();
-    const expDate = new Date(expirationDate);
-    const diffDays = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  function getCredentialStatus(expirationDate: string | null | undefined) {
+    if (!expirationDate) return { text: "No Expiration", color: "text-slate-500", bg: "bg-slate-100" };
+    const diffDays = Math.ceil((new Date(expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return { text: "Expired", color: "text-red-700", bg: "bg-red-50" };
+    if (diffDays <= 30) return { text: "Expires in " + diffDays + "d", color: "text-yellow-700", bg: "bg-yellow-50" };
+    return { text: "Valid", color: "text-green-700", bg: "bg-green-50" };
+  }
 
-    if (diffDays < 0) return { text: "Expired", color: "#c53030", bg: "#fff5f5" };
-    if (diffDays <= 30) return { text: `Expires in ${diffDays}d`, color: "#ca8a04", bg: "#fefce8" };
-    return { text: "Valid", color: "#16a34a", bg: "#f0fdf4" };
-  };
-
-  if (loading) return <div style={{ padding: 40, fontFamily: "system-ui" }}>Loading Providers...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-gray-400 text-sm">Loading providers...</p>
+    </div>
+  );
 
   return (
-    <div style={{ padding: "20px", maxWidth: 1000, margin: "0 auto", fontFamily: "system-ui" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+    <div className="px-4 py-8 sm:px-8 max-w-4xl mx-auto font-sans">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 style={{ fontSize: "28px", margin: 0, color: "#0f172a" }}>Tutors</h1>
-          <p style={{ color: "#64748b", margin: "4px 0 0 0", fontSize: "14px" }}>ESA Compliance Roster</p>
+          <h1 className="text-2xl font-bold text-gray-900">Tutors</h1>
+          <p className="text-gray-400 text-sm mt-0.5">ESA Compliance Roster</p>
         </div>
-        <Link href="/tutors/new" style={{ padding: "10px 16px", backgroundColor: "#0f172a", color: "white", borderRadius: "8px", textDecoration: "none", fontWeight: 600, fontSize: "14px" }}>
+        <Link href="/tutors/new" className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold hover:bg-slate-700 transition-colors">
           + Add
         </Link>
       </div>
 
-      {/* MOBILE VIEW */}
-      <div className="block md:hidden" style={{ backgroundColor: "white", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-        {tutors.map((t) => {
-          const compliance = getCredentialStatus(t.credential_expiration);
+      {/* Mobile */}
+      <div className="block md:hidden bg-white rounded-xl border border-gray-200">
+        {tutors.map(t => {
+          const c = getCredentialStatus(t.credential_expiration);
           return (
-            <div key={t.id} onClick={() => router.push(`/tutors/${t.id}`)} style={{ display: "flex", alignItems: "center", padding: "16px 12px", borderBottom: "1px solid #f1f5f9", justifyContent: "space-between" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: "15px", color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {t.full_name}
-                </div>
-                <div style={{ fontSize: "12px", color: "#64748b" }}>{t.credential_type?.slice(0, 20)}...</div>
+            <div key={t.id} onClick={() => router.push("/tutors/" + t.id)} className="flex items-center justify-between px-4 py-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors">
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-gray-900 text-sm truncate">{t.full_name}</div>
+                <div className="text-xs text-gray-400 truncate">{t.credential_type}</div>
               </div>
-              <div style={{ marginLeft: "12px" }}>
-                <span style={{ padding: "4px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, backgroundColor: compliance.bg, color: compliance.color }}>
-                  {compliance.text}
-                </span>
-              </div>
-              <div style={{ marginLeft: "10px", color: "#cbd5e1" }}>›</div>
+              <span className={"ml-3 px-2 py-0.5 rounded-full text-xs font-bold " + c.bg + " " + c.color}>{c.text}</span>
+              <span className="ml-2 text-gray-300 text-lg">›</span>
             </div>
           );
         })}
       </div>
 
-      {/* DESKTOP VIEW */}
-      <div className="hidden md:block" style={{ backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      {/* Desktop */}
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full border-collapse">
           <thead>
-            <tr style={{ textAlign: "left", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Provider</th>
-              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Compliance</th>
-              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b" }}>Invoices</th>
-              <th style={{ padding: "16px", fontSize: "13px", color: "#64748b", textAlign: "right" }}>Actions</th>
+            <tr className="bg-slate-50 border-b border-gray-200 text-left">
+              <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Provider</th>
+              <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Compliance</th>
+              <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Invoices</th>
+              <th className="px-2 py-3 pr-5 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {tutors.map((t) => {
-              const compliance = getCredentialStatus(t.credential_expiration);
+            {tutors.map(t => {
+              const c = getCredentialStatus(t.credential_expiration);
               return (
-                <tr key={t.id} style={{ borderBottom: "1px solid #f1f5f9", opacity: t.is_active ? 1 : 0.6 }}>
-                  <td style={{ padding: "16px" }}>
-                    <Link href={`/tutors/${t.id}`} style={{ textDecoration: "none", fontWeight: 600, color: "#007bff" }}>{t.full_name}</Link>
-                    <div style={{ fontSize: "12px", color: "#94a3b8" }}>{t.credential_type}</div>
+                <tr key={t.id} className={"border-b border-gray-50 hover:bg-gray-50 transition-colors" + (t.is_active ? "" : " opacity-50")}>
+                  <td className="px-5 py-3">
+                    <Link href={"/tutors/" + t.id} className="font-semibold text-blue-600 hover:text-blue-800 text-sm">{t.full_name}</Link>
+                    <div className="text-xs text-gray-400">{t.credential_type}</div>
                   </td>
-                  <td style={{ padding: "16px" }}>
-                    <span style={{ padding: "4px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, backgroundColor: compliance.bg, color: compliance.color }}>
-                      {compliance.text}
-                    </span>
+                  <td className="px-2 py-3">
+                    <span className={"px-2 py-0.5 rounded-full text-xs font-bold " + c.bg + " " + c.color}>{c.text}</span>
                   </td>
-                  <td style={{ padding: "16px", fontSize: "14px" }}>{t.invoice_count}</td>
-                  <td style={{ padding: "16px", textAlign: "right" }}>
-                    <button onClick={() => toggleStatus(t)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1px solid #ccc", background: "white", cursor: "pointer", fontWeight: 600 }}>
+                  <td className="px-2 py-3 text-sm text-gray-600">{t.invoice_count}</td>
+                  <td className="px-2 py-3 pr-5 text-right">
+                    <button onClick={() => toggleStatus(t)} className="px-3 py-1 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors">
                       {t.is_active ? "Deactivate" : "Activate"}
                     </button>
                   </td>

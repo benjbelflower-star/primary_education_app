@@ -13,121 +13,97 @@ type ComplianceTutor = Tutor & {
 export default function TutorComplianceReport() {
   const [tutors, setTutors] = useState<ComplianceTutor[]>([]);
   const [loading, setLoading] = useState(true);
-  const PROTOTYPE_SCHOOL_ID = "e03a9724-f97e-4967-992c-9fb278414016";
 
   useEffect(() => {
-    async function loadComplianceData() {
-      const { data, error } = await supabase
-        .from("tutors")
-        .select("*")
-        .eq("school_id", PROTOTYPE_SCHOOL_ID);
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+      if (!userData) return;
+
+      const { data, error } = await supabase.from("tutors").select("*").eq("school_id", userData.school_id);
 
       if (data && !error) {
         const now = new Date();
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(now.getDate() + 30);
-
-        const processed = data.map((t) => {
+        const processed = data.map(t => {
           let daysRemaining = null;
           let complianceStatus: "expired" | "warning" | "valid" = "valid";
-
           if (t.credential_expiration) {
             const exp = new Date(t.credential_expiration);
-            const diffTime = exp.getTime() - now.getTime();
-            daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+            daysRemaining = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             if (daysRemaining < 0) complianceStatus = "expired";
             else if (daysRemaining <= 30) complianceStatus = "warning";
           }
-
           return { ...t, daysRemaining, complianceStatus } as ComplianceTutor;
         });
-
-        processed.sort((a, b) => {
-          const order: Record<"expired" | "warning" | "valid", number> = { 
-            expired: 0, 
-            warning: 1, 
-            valid: 2 
-          };
-          return order[a.complianceStatus] - order[b.complianceStatus];
-        });
-
+        processed.sort((a, b) => ({ expired: 0, warning: 1, valid: 2 }[a.complianceStatus] - { expired: 0, warning: 1, valid: 2 }[b.complianceStatus]));
         setTutors(processed);
       }
       setLoading(false);
     }
-    loadComplianceData();
+    load();
   }, []);
 
-  const getStatusStyle = (status: "expired" | "warning" | "valid"): React.CSSProperties => {
-    if (status === "expired") return { color: "#c53030", backgroundColor: "#fff5f5", fontWeight: 700 };
-    if (status === "warning") return { color: "#975a16", backgroundColor: "#fffff0", fontWeight: 700 };
-    return { color: "#2c7a7b", backgroundColor: "#e6fffa", fontWeight: 700 };
-  };
+  function getStatusClass(status: "expired" | "warning" | "valid") {
+    if (status === "expired") return "px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-red-50 text-red-700";
+    if (status === "warning") return "px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-yellow-50 text-yellow-700";
+    return "px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-teal-50 text-teal-700";
+  }
 
-  if (loading) return <div style={{ padding: 60 }}>Generating compliance audit...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-gray-400 text-sm">Generating compliance audit...</p>
+    </div>
+  );
 
   return (
-    <div style={{ padding: 60, maxWidth: 1200, fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: "32px", marginBottom: "8px" }}>Tutor Compliance Report</h1>
-      <p style={{ color: "#666", marginBottom: "40px" }}>Monitor credential expiration across your tutoring staff.</p>
+    <div className="px-4 py-8 sm:px-8 max-w-5xl mx-auto font-sans">
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Tutor Compliance Report</h1>
+      <p className="text-gray-500 text-sm mb-6">Monitor credential expiration across your tutoring staff.</p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "20px", marginBottom: "40px" }}>
-        <div style={{ padding: "20px", borderRadius: "8px", border: "1px solid #ddd", textAlign: "center" }}>
-          <div style={{ fontSize: "12px", color: "#666" }}>EXPIRED</div>
-          <div style={{ fontSize: "24px", fontWeight: 800, color: "#c53030" }}>
-            {tutors.filter(t => t.complianceStatus === "expired").length}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {[
+          { label: "Expired", status: "expired", color: "text-red-600" },
+          { label: "Expiring (30 days)", status: "warning", color: "text-yellow-600" },
+          { label: "Valid", status: "valid", color: "text-teal-600" },
+        ].map(({ label, status, color }) => (
+          <div key={status} className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">{label}</div>
+            <div className={"text-3xl font-extrabold " + color}>
+              {tutors.filter(t => t.complianceStatus === status).length}
+            </div>
           </div>
-        </div>
-        <div style={{ padding: "20px", borderRadius: "8px", border: "1px solid #ddd", textAlign: "center" }}>
-          <div style={{ fontSize: "12px", color: "#666" }}>EXPIRING (30 DAYS)</div>
-          <div style={{ fontSize: "24px", fontWeight: 800, color: "#975a16" }}>
-            {tutors.filter(t => t.complianceStatus === "warning").length}
-          </div>
-        </div>
-        <div style={{ padding: "20px", borderRadius: "8px", border: "1px solid #ddd", textAlign: "center" }}>
-          <div style={{ fontSize: "12px", color: "#666" }}>VALID</div>
-          <div style={{ fontSize: "24px", fontWeight: 800, color: "#2c7a7b" }}>
-            {tutors.filter(t => t.complianceStatus === "valid").length}
-          </div>
-        </div>
+        ))}
       </div>
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ textAlign: "left", borderBottom: "2px solid #eee", fontSize: "14px", color: "#666" }}>
-            <th style={{ padding: "12px" }}>Tutor Name</th>
-            <th style={{ padding: "12px" }}>Credential Type</th>
-            <th style={{ padding: "12px" }}>Expiration</th>
-            <th style={{ padding: "12px" }}>Status</th>
-            <th style={{ padding: "12px" }}>Days Left</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tutors.map((t) => (
-            <tr key={t.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: "12px" }}>
-                <Link href={`/tutors/${t.id}`} style={{ color: "#007bff", fontWeight: 600, textDecoration: "none" }}>
-                  {t.full_name}
-                </Link>
-              </td>
-              <td style={{ padding: "12px", fontSize: "14px" }}>{t.credential_type}</td>
-              <td style={{ padding: "12px", fontSize: "14px" }}>{t.credential_expiration || "N/A"}</td>
-              <td style={{ padding: "12px" }}>
-                <span style={{ 
-                  padding: "4px 10px", borderRadius: "12px", fontSize: "11px", textTransform: "uppercase",
-                  ...getStatusStyle(t.complianceStatus)
-                }}>
-                  {t.complianceStatus}
-                </span>
-              </td>
-              <td style={{ padding: "12px", fontSize: "14px" }}>
-                {t.daysRemaining !== null ? t.daysRemaining : "--"}
-              </td>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-slate-50 border-b border-gray-200 text-left">
+              <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Tutor Name</th>
+              <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Credential Type</th>
+              <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Expiration</th>
+              <th className="px-2 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+              <th className="px-2 py-3 pr-5 text-xs font-semibold text-gray-500 uppercase tracking-wide text-right">Days Left</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {tutors.map(t => (
+              <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                <td className="px-5 py-3">
+                  <Link href={"/tutors/" + t.id} className="text-blue-600 font-semibold text-sm hover:text-blue-800">
+                    {t.full_name}
+                  </Link>
+                </td>
+                <td className="px-2 py-3 text-sm text-gray-600">{t.credential_type}</td>
+                <td className="px-2 py-3 text-sm text-gray-600">{t.credential_expiration || "N/A"}</td>
+                <td className="px-2 py-3"><span className={getStatusClass(t.complianceStatus)}>{t.complianceStatus}</span></td>
+                <td className="px-2 py-3 pr-5 text-sm text-gray-600 text-right">{t.daysRemaining !== null ? t.daysRemaining : "--"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
