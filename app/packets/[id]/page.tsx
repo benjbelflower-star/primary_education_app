@@ -86,7 +86,7 @@ export default function PacketReviewPage() {
   if (!packet || !invoice) return <div style={containerStyle}>Packet not found.</div>;
 
   return (
-    <div style={containerStyle}>
+    <div id="print-area" style={containerStyle}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "30px" }}>
         <h1>Claim Packet Review</h1>
         <span style={{ 
