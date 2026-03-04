@@ -33,7 +33,6 @@ export default function ClaimsPacketDetail() {
   const [packet, setPacket] = useState<Packet | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
 
@@ -146,61 +145,53 @@ export default function ClaimsPacketDetail() {
           <p className="text-gray-400 text-sm px-5 py-4">No invoices linked to this packet.</p>
         ) : (
           <div className="flex flex-col">
-            {invoices.map(inv => {
-              const isExpanded = expandedInvoiceId === inv.id;
-              return (
-                <div key={inv.id} className="border-b border-gray-50 last:border-b-0">
-                  <button
-                    onClick={() => setExpandedInvoiceId(isExpanded ? null : inv.id)}
-                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-none text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={cx("text-gray-400 text-base transition-transform inline-block", isExpanded && "rotate-90")}>›</span>
-                      <div>
-                        <div className="font-semibold text-sm text-gray-900">{inv.invoice_number}</div>
-                        <div className="text-xs text-gray-400">{inv.issue_date}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={cx(
-                        "text-xs font-bold px-2 py-0.5 rounded-full",
-                        inv.status === "paid" ? "bg-green-50 text-green-700" :
-                        inv.status === "draft" ? "bg-yellow-50 text-yellow-700" :
-                        "bg-gray-100 text-gray-500"
-                      )}>
-                        {inv.status}
-                      </span>
-                      <span className="font-bold text-sm text-gray-900">${Number(inv.total).toFixed(2)}</span>
-                    </div>
-                  </button>
+            {invoices.map(inv => (
+              <div key={inv.id} className="border-b border-gray-50 last:border-b-0">
+                <button
+                  onClick={() => router.push("/invoices/" + inv.id)}
+                  className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors cursor-pointer bg-transparent border-none text-left"
+                >
+                  <div>
+                    <div className="font-semibold text-sm text-blue-600 hover:text-blue-800">{inv.invoice_number}</div>
+                    <div className="text-xs text-gray-400">{inv.issue_date}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={cx(
+                      "text-xs font-bold px-2 py-0.5 rounded-full",
+                      inv.status === "paid" ? "bg-green-50 text-green-700" :
+                      inv.status === "draft" ? "bg-yellow-50 text-yellow-700" :
+                      "bg-gray-100 text-gray-500"
+                    )}>
+                      {inv.status}
+                    </span>
+                    <span className="font-bold text-sm text-gray-900">${Number(inv.total).toFixed(2)}</span>
+                  </div>
+                </button>
 
-                  {isExpanded && (
-                    <div className="border-t border-gray-100">
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse min-w-[360px]">
-                          <thead>
-                            <tr className="bg-slate-50 border-b border-gray-100">
-                              <th className="px-5 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide text-left">Date</th>
-                              <th className="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide text-left">Description</th>
-                              <th className="px-2 py-2 pr-5 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(inv.invoice_line_items || []).map(item => (
-                              <tr key={item.id} className="border-b border-gray-50">
-                                <td className="px-5 py-2 text-xs text-gray-600 whitespace-nowrap">{item.service_date_start ?? "—"}</td>
-                                <td className="px-2 py-2 text-xs text-gray-700">{item.description}</td>
-                                <td className="px-2 py-2 pr-5 text-xs font-semibold text-gray-900 text-right">${Number(item.amount).toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
+                <div className="border-t border-gray-100">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse min-w-[360px]">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-gray-100">
+                          <th className="px-5 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide text-left">Date</th>
+                          <th className="px-2 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide text-left">Description</th>
+                          <th className="px-2 py-2 pr-5 text-xs font-semibold text-gray-400 uppercase tracking-wide text-right">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(inv.invoice_line_items || []).map(item => (
+                          <tr key={item.id} className="border-b border-gray-50">
+                            <td className="px-5 py-2 text-xs text-gray-600 whitespace-nowrap">{item.service_date_start ?? "—"}</td>
+                            <td className="px-2 py-2 text-xs text-gray-700">{item.description}</td>
+                            <td className="px-2 py-2 pr-5 text-xs font-semibold text-gray-900 text-right">${Number(item.amount).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>

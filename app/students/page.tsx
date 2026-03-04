@@ -43,6 +43,10 @@ export default function StudentRoster() {
 
   return (
     <div className="px-4 py-8 sm:px-8 max-w-4xl mx-auto font-sans">
+      <button onClick={() => router.push("/")} className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors block">
+        ← Back to Dashboard
+      </button>
+
       <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Students</h1>
