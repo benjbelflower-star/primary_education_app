@@ -75,6 +75,7 @@ useEffect(() => {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!schoolId) return;
+    console.log("schoolId at submit time:", schoolId);
     if (filteredLogs.length === 0) { setStatus("Error: No unbilled logs found for this Student/Tutor combination."); return; }
     if (!hourlyRate || hourlyRate <= 0) { setStatus("Error: Please enter a valid hourly rate."); return; }
 
