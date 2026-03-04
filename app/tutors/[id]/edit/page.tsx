@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../../lib/supabaseClient";
 
+function cx(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
 export default function EditTutorForm() {
   const { id } = useParams();
   const router = useRouter();
@@ -15,6 +19,7 @@ export default function EditTutorForm() {
   const [degreeTitle, setDegreeTitle] = useState("");
   const [fieldOfStudy, setFieldOfStudy] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
   const [isActive, setIsActive] = useState(true);
 
   const [loading, setLoading] = useState(true);
@@ -36,7 +41,8 @@ export default function EditTutorForm() {
         setCredentialType(data.credential_type || "");
         setDegreeTitle(data.degree_title || "");
         setFieldOfStudy(data.field_of_study || "");
-        setExpirationDate(data.expiration_date || "");
+        setExpirationDate(data.credential_expiration || "");
+        setHourlyRate(data.hourly_rate?.toString() || "");
         setIsActive(data.is_active ?? true);
       }
       setLoading(false);
@@ -52,122 +58,135 @@ export default function EditTutorForm() {
       .from("tutors")
       .update({
         full_name: fullName,
-        email: email,
-        phone: phone,
+        email,
+        phone,
         credential_type: credentialType,
         degree_title: degreeTitle,
         field_of_study: fieldOfStudy,
-        expiration_date: expirationDate || null,
-        is_active: isActive
+        credential_expiration: expirationDate || null,
+        hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
+        is_active: isActive,
       })
       .eq("id", id);
 
     if (error) {
-      setMessage(`Error: ${error.message}`);
+      setMessage("Error: " + error.message);
     } else {
       setMessage("Tutor profile updated successfully.");
-      setTimeout(() => router.push(`/tutors/${id}`), 1500);
+      setTimeout(() => router.push("/tutors/" + id), 1500);
     }
     setIsSubmitting(false);
   }
 
-  const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: "14px", display: "block", marginBottom: "4px" };
-  const inputStyle: React.CSSProperties = { padding: "10px", borderRadius: "6px", border: "1px solid #ccc", width: "100%", boxSizing: "border-box" };
+  const inputClass = "w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1";
 
-  if (loading) return <div style={{ padding: 60 }}>Loading tutor profile...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <p className="text-gray-400 text-sm">Loading tutor profile...</p>
+    </div>
+  );
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: 60, fontFamily: "system-ui" }}>
-      <h1 style={{ fontSize: "28px", marginBottom: "8px" }}>Edit Tutor Profile</h1>
-      <p style={{ color: "#666", marginBottom: "30px" }}>ID: {id}</p>
+    <div className="px-4 py-8 sm:px-8 max-w-2xl mx-auto font-sans">
+      <button
+        onClick={() => router.push("/tutors/" + id)}
+        className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors"
+      >
+        Back to Profile
+      </button>
 
-      <form onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+      <h1 className="text-2xl font-bold text-gray-900 mb-1">Edit Tutor Profile</h1>
+      <p className="text-gray-400 text-xs mb-6">ID: {id}</p>
+
+      <form onSubmit={handleUpdate} className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 flex flex-col gap-5">
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label style={labelStyle}>Full Name</label>
-            <input required value={fullName} onChange={e => setFullName(e.target.value)} style={inputStyle} />
+            <label className={labelClass}>Full Name</label>
+            <input required value={fullName} onChange={e => setFullName(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label style={labelStyle}>Status</label>
-            <select value={isActive ? "active" : "inactive"} onChange={e => setIsActive(e.target.value === "active")} style={inputStyle}>
+            <label className={labelClass}>Status</label>
+            <select value={isActive ? "active" : "inactive"} onChange={e => setIsActive(e.target.value === "active")} className={inputClass}>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label style={labelStyle}>Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
+            <label className={labelClass}>Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label style={labelStyle}>Phone</label>
-            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} style={inputStyle} />
+            <label className={labelClass}>Phone</label>
+            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className={inputClass} />
           </div>
         </div>
 
-        <hr style={{ border: "0", borderTop: "1px solid #eee", margin: "10px 0" }} />
+        <hr className="border-gray-100" />
 
         <div>
-          <label style={labelStyle}>Credential Type</label>
-          <select required value={credentialType} onChange={e => setCredentialType(e.target.value)} style={inputStyle}>
+          <label className={labelClass}>Credential Type</label>
+          <select required value={credentialType} onChange={e => setCredentialType(e.target.value)} className={inputClass}>
             <option value="">Select Type...</option>
             <option value="High School Diploma">High School Diploma</option>
             <option value="College (or Higher) Diploma">College (or Higher) Diploma</option>
             <option value="Teaching / Substitute Teaching Certificate - AZ State">Teaching Certificate</option>
+            <option value="Subject-Specific degree">Subject-Specific Degree</option>
           </select>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label style={labelStyle}>Degree Title</label>
-            <input value={degreeTitle} onChange={e => setDegreeTitle(e.target.value)} style={inputStyle} placeholder="e.g. Bachelor of Science" />
+            <label className={labelClass}>Degree Title</label>
+            <input value={degreeTitle} onChange={e => setDegreeTitle(e.target.value)} className={inputClass} placeholder="e.g. Bachelor of Science" />
           </div>
           <div>
-            <label style={labelStyle}>Area of Study</label>
-            <input value={fieldOfStudy} onChange={e => setFieldOfStudy(e.target.value)} style={inputStyle} placeholder="e.g. Mathematics" />
+            <label className={labelClass}>Area of Study</label>
+            <input value={fieldOfStudy} onChange={e => setFieldOfStudy(e.target.value)} className={inputClass} placeholder="e.g. Mathematics" />
           </div>
         </div>
 
-        <div>
-          <label style={labelStyle}>Expiration Date</label>
-          <input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)} style={inputStyle} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Expiration Date</label>
+            <input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className={labelClass}>Hourly Rate ($)</label>
+            <input type="number" min="0" step="0.01" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} className={inputClass} placeholder="e.g. 50.00" />
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-          <button 
-            type="submit" 
+        <div className="flex flex-col sm:flex-row gap-3 mt-2">
+          <button
+            type="submit"
             disabled={isSubmitting}
-            style={{ 
-              flex: 1, padding: "12px", backgroundColor: "#007bff", color: "white", 
-              border: "none", borderRadius: "6px", fontWeight: 700, cursor: "pointer" 
-            }}
+            className={cx(
+              "flex-1 py-3 rounded-lg text-white text-sm font-bold transition-colors",
+              isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
+            )}
           >
             {isSubmitting ? "Saving..." : "Update Tutor"}
           </button>
-          <button 
-            type="button" 
-            onClick={() => router.push(`/tutors/${id}`)}
-            style={{ 
-              padding: "12px 24px", backgroundColor: "white", color: "#333", 
-              border: "1px solid #ccc", borderRadius: "6px", fontWeight: 600, cursor: "pointer" 
-            }}
+          <button
+            type="button"
+            onClick={() => router.push("/tutors/" + id)}
+            className="px-6 py-3 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer transition-colors"
           >
             Cancel
           </button>
         </div>
 
         {message && (
-          <div style={{ 
-            marginTop: "10px", padding: "12px", borderRadius: "6px", textAlign: "center",
-            backgroundColor: message.includes("Error") ? "#fff5f5" : "#f0fdf4",
-            color: message.includes("Error") ? "#c53030" : "#2c7a7b",
-            border: "1px solid"
-          }}>
+          <div className={message.includes("Error") ? "p-3 rounded-lg text-center text-sm font-semibold bg-red-50 text-red-700" : "p-3 rounded-lg text-center text-sm font-semibold bg-green-50 text-green-700"}>
             {message}
           </div>
         )}
+
       </form>
     </div>
   );

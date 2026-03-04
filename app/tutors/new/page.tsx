@@ -20,6 +20,7 @@ export default function NewTutorForm() {
   const [degreeTitle, setDegreeTitle] = useState("");
   const [issueDate, setIssueDate] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
   const [credentialFile, setCredentialFile] = useState<File | null>(null);
 
   const [status, setStatus] = useState("");
@@ -38,22 +39,18 @@ export default function NewTutorForm() {
     setStatus("Scanning document with AI...");
 
     try {
-      // Convert the file to base64 so we can send it to Claude
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          // Strip the data URL prefix (e.g. "data:image/png;base64,")
           resolve(result.split(",")[1]);
         };
         reader.onerror = reject;
         reader.readAsDataURL(credentialFile);
       });
 
-      // Determine media type
       const mimeType = credentialFile.type || "application/pdf";
 
-      // Build the message to Claude
       const prompt = `You are a credential verification assistant. Extract information from this tutor credential document and return ONLY a valid JSON object with no extra text.
 
 Return exactly this structure:
@@ -82,16 +79,9 @@ Return exactly this structure:
               content: [
                 {
                   type: mimeType === "application/pdf" ? "document" : "image",
-                  source: {
-                    type: "base64",
-                    media_type: mimeType,
-                    data: base64,
-                  },
+                  source: { type: "base64", media_type: mimeType, data: base64 },
                 },
-                {
-                  type: "text",
-                  text: prompt,
-                },
+                { type: "text", text: prompt },
               ],
             },
           ],
@@ -105,12 +95,9 @@ Return exactly this structure:
 
       const data = await response.json();
       const rawText = data.content?.[0]?.text || "";
-
-      // Strip any accidental markdown fences before parsing
       const cleaned = rawText.replace(/```json|```/g, "").trim();
       const extracted = JSON.parse(cleaned);
 
-      // Pre-fill whatever fields Claude found
       if (extracted.full_name) setFullName(extracted.full_name);
       if (extracted.degree_title) setDegreeTitle(extracted.degree_title);
       if (extracted.field_of_study) setFieldOfStudy(extracted.field_of_study);
@@ -120,7 +107,6 @@ Return exactly this structure:
 
       setScanSuccess(true);
       setStatus("Scan complete! Review and correct any fields below.");
-
     } catch (err: any) {
       setStatus("Error scanning document: " + err.message);
     } finally {
@@ -149,12 +135,12 @@ Return exactly this structure:
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-if (!user) { setStatus("Error: Not logged in."); setIsSubmitting(false); return; }
-const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
-if (!userData) { setStatus("Error: Could not find school."); setIsSubmitting(false); return; }
+    if (!user) { setStatus("Error: Not logged in."); setIsSubmitting(false); return; }
+    const { data: userData } = await supabase.from("users").select("school_id").eq("id", user.id).single();
+    if (!userData) { setStatus("Error: Could not find school."); setIsSubmitting(false); return; }
 
-const { error } = await supabase.from("tutors").insert({
-  school_id: userData.school_id,
+    const { error } = await supabase.from("tutors").insert({
+      school_id: userData.school_id,
       full_name: fullName,
       email,
       phone,
@@ -164,6 +150,7 @@ const { error } = await supabase.from("tutors").insert({
       issue_date: issueDate || null,
       credential_expiration: expirationDate || null,
       credential_url: finalCredentialUrl,
+      hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
       is_active: true,
     });
 
@@ -191,17 +178,14 @@ const { error } = await supabase.from("tutors").insert({
         onClick={() => router.push("/tutors")}
         className="text-blue-500 font-semibold text-sm mb-6 bg-transparent border-none cursor-pointer p-0 hover:text-blue-700 transition-colors"
       >
-        ← Back to Roster
+        Back to Roster
       </button>
 
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Add Provider</h1>
-      <p className="text-gray-500 text-sm mb-6">
-        Upload credentials for automated ESA compliance mapping.
-      </p>
+      <p className="text-gray-500 text-sm mb-6">Upload credentials for automated ESA compliance mapping.</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 bg-white p-5 sm:p-6 rounded-xl border border-gray-200">
 
-        {/* Step 1: Upload & Scan */}
         <div className="p-4 bg-slate-50 rounded-lg border border-dashed border-slate-300">
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
             Step 1: Upload and Scan Credential Document
@@ -233,12 +217,8 @@ const { error } = await supabase.from("tutors").insert({
           </div>
         </div>
 
-        {/* Status message */}
-        {status && (
-          <div className={getStatusClass(status)}>{status}</div>
-        )}
+        {status && <div className={getStatusClass(status)}>{status}</div>}
 
-        {/* Step 2: Review Fields */}
         <div>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">
             Step 2: Review and Complete Profile
@@ -246,22 +226,11 @@ const { error } = await supabase.from("tutors").insert({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>Full Name</label>
-              <input
-                required
-                value={fullName}
-                onChange={e => setFullName(e.target.value)}
-                className={inputClass}
-                placeholder="e.g. Jane Smith"
-              />
+              <input required value={fullName} onChange={e => setFullName(e.target.value)} className={inputClass} placeholder="e.g. Jane Smith" />
             </div>
             <div>
               <label className={labelClass}>Credential Type</label>
-              <select
-                required
-                value={credentialType}
-                onChange={e => setCredentialType(e.target.value as TutorCredentialType)}
-                className={inputClass}
-              >
+              <select required value={credentialType} onChange={e => setCredentialType(e.target.value as TutorCredentialType)} className={inputClass}>
                 <option value="">Select Type...</option>
                 <option value="High School Diploma">High School Diploma</option>
                 <option value="College (or Higher) Diploma">College (or Higher) Diploma</option>
@@ -271,59 +240,31 @@ const { error } = await supabase.from("tutors").insert({
             </div>
             <div>
               <label className={labelClass}>Degree / Certificate Title</label>
-              <input
-                value={degreeTitle}
-                onChange={e => setDegreeTitle(e.target.value)}
-                className={inputClass}
-                placeholder="e.g. B.S. Mathematics"
-              />
+              <input value={degreeTitle} onChange={e => setDegreeTitle(e.target.value)} className={inputClass} placeholder="e.g. B.S. Mathematics" />
             </div>
             <div>
               <label className={labelClass}>Field of Study</label>
-              <input
-                value={fieldOfStudy}
-                onChange={e => setFieldOfStudy(e.target.value)}
-                className={inputClass}
-                placeholder="e.g. Mathematics"
-              />
+              <input value={fieldOfStudy} onChange={e => setFieldOfStudy(e.target.value)} className={inputClass} placeholder="e.g. Mathematics" />
             </div>
             <div>
               <label className={labelClass}>Issue Date</label>
-              <input
-                type="date"
-                value={issueDate}
-                onChange={e => setIssueDate(e.target.value)}
-                className={inputClass}
-              />
+              <input type="date" value={issueDate} onChange={e => setIssueDate(e.target.value)} className={inputClass} />
             </div>
             <div>
               <label className={labelClass}>Expiration Date</label>
-              <input
-                type="date"
-                value={expirationDate}
-                onChange={e => setExpirationDate(e.target.value)}
-                className={inputClass}
-              />
+              <input type="date" value={expirationDate} onChange={e => setExpirationDate(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Hourly Rate ($)</label>
+              <input type="number" min="0" step="0.01" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} className={inputClass} placeholder="e.g. 50.00" />
             </div>
             <div>
               <label className={labelClass}>Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className={inputClass}
-                placeholder="tutor@example.com"
-              />
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} placeholder="tutor@example.com" />
             </div>
             <div>
               <label className={labelClass}>Phone</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                className={inputClass}
-                placeholder="(555) 000-0000"
-              />
+              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} className={inputClass} placeholder="(555) 000-0000" />
             </div>
           </div>
         </div>
@@ -333,9 +274,7 @@ const { error } = await supabase.from("tutors").insert({
           disabled={isSubmitting}
           className={cx(
             "w-full py-3 rounded-lg text-white text-sm font-bold transition-colors mt-1",
-            isSubmitting
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-slate-900 hover:bg-slate-700 cursor-pointer"
+            isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-700 cursor-pointer"
           )}
         >
           {isSubmitting ? "Saving..." : "Save Verified Profile"}
@@ -345,7 +284,3 @@ const { error } = await supabase.from("tutors").insert({
     </div>
   );
 }
-
-///There's one setup step you need to do before this will work. In your project's root folder, find the file called `.env.local` (create it if it doesn't exist) and add this line:
-
-//NEXT_PUBLIC_ANTHROPIC_API_KEY=your_anthropic_api_key_here
