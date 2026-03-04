@@ -10,6 +10,7 @@ function cx(...classes: (string | false | null | undefined)[]) {
 
 type Student = { id: string; first_name: string; last_name: string; };
 type Invoice = { id: string; invoice_number: string; issue_date: string; total: number; notes: string; };
+type PacketStatus = { quarter: string; status: string; packetId: string; };
 
 function getQuarters() {
   const quarters = [];
@@ -41,6 +42,7 @@ export default function NewClaimPacket() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [selectedQuarter, setSelectedQuarter] = useState("");
   const [previewInvoices, setPreviewInvoices] = useState<Invoice[]>([]);
+  const [packetStatuses, setPacketStatuses] = useState<PacketStatus[]>([]);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -67,6 +69,38 @@ export default function NewClaimPacket() {
     load();
   }, []);
 
+  // Load packet statuses when student changes
+  useEffect(() => {
+    async function loadPacketStatuses() {
+      if (!selectedStudentId || !schoolId) {
+        setPacketStatuses([]);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("esa_claim_packets")
+        .select("id, status, notes")
+        .eq("school_id", schoolId)
+        .eq("student_id", selectedStudentId);
+
+      if (data) {
+        const statuses = data.map(p => {
+          // Extract quarter label from notes field e.g. "Q1 2026 — 3 invoices — $900.00"
+          const quarterLabel = p.notes?.split(" — ")[0] || "";
+          const quarter = quarters.find(q => q.label === quarterLabel);
+          return {
+            quarter: quarter?.value || "",
+            status: p.status,
+            packetId: p.id,
+          };
+        }).filter(p => p.quarter !== "");
+        setPacketStatuses(statuses);
+      }
+    }
+    loadPacketStatuses();
+  }, [selectedStudentId, schoolId]);
+
+  // Load invoice preview when student + quarter changes
   useEffect(() => {
     async function loadPreview() {
       if (!selectedStudentId || !selectedQuarter || !schoolId) {
@@ -96,6 +130,14 @@ export default function NewClaimPacket() {
   const grandTotal = previewInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
   const selectedStudent = students.find(s => s.id === selectedStudentId);
   const quarterLabel = quarters.find(q => q.value === selectedQuarter)?.label || "";
+  const existingPacket = packetStatuses.find(p => p.quarter === selectedQuarter);
+
+  function getQuarterStatusIcon(quarterValue: string) {
+    const existing = packetStatuses.find(p => p.quarter === quarterValue);
+    if (!existing) return "⚪";
+    if (existing.status === "submitted") return "🟢";
+    return "🟡";
+  }
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -105,8 +147,6 @@ export default function NewClaimPacket() {
     setStatusMessage("Assembling claim packet...");
 
     try {
-      const quarter = quarters.find(q => q.value === selectedQuarter);
-
       const { data: packet, error: packetError } = await supabase
         .from("esa_claim_packets")
         .insert({
@@ -153,7 +193,7 @@ export default function NewClaimPacket() {
         <form onSubmit={handleGenerate} className="flex flex-col gap-5">
           <div>
             <label className={labelClass}>Student</label>
-            <select required value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} className={inputClass}>
+            <select required value={selectedStudentId} onChange={e => { setSelectedStudentId(e.target.value); setSelectedQuarter(""); }} className={inputClass}>
               <option value="">Select student...</option>
               {students.map(s => (
                 <option key={s.id} value={s.id}>{s.last_name}, {s.first_name}</option>
@@ -163,13 +203,42 @@ export default function NewClaimPacket() {
 
           <div>
             <label className={labelClass}>Quarter</label>
-            <select required value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)} className={inputClass}>
+            <select required value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)} className={inputClass} disabled={!selectedStudentId}>
               <option value="">Select quarter...</option>
               {quarters.map(q => (
-                <option key={q.value} value={q.value}>{q.label}</option>
+                <option key={q.value} value={q.value}>
+                  {getQuarterStatusIcon(q.value)} {q.label}
+                </option>
               ))}
             </select>
+            {selectedStudentId && (
+              <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                <span>⚪ No packet</span>
+                <span>🟡 Draft</span>
+                <span>🟢 Submitted</span>
+              </div>
+            )}
           </div>
+
+          {existingPacket && (
+            <div className={cx(
+              "p-3 rounded-lg text-sm font-medium border",
+              existingPacket.status === "submitted"
+                ? "bg-teal-50 text-teal-700 border-teal-200"
+                : "bg-yellow-50 text-yellow-700 border-yellow-200"
+            )}>
+              {existingPacket.status === "submitted"
+                ? "A submitted packet already exists for this quarter. "
+                : "A draft packet already exists for this quarter. "}
+              <button
+                type="button"
+                onClick={() => router.push("/claims/" + existingPacket.packetId)}
+                className="underline font-semibold cursor-pointer bg-transparent border-none p-0"
+              >
+                View it →
+              </button>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -202,12 +271,14 @@ export default function NewClaimPacket() {
             <p className="text-sm text-red-400 text-center my-8">No invoices found for this student in {quarterLabel}.</p>
           ) : (
             <div className="flex flex-col gap-3">
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide">{selectedStudent?.first_name} {selectedStudent?.last_name} — {quarterLabel}</div>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
+                {selectedStudent?.first_name} {selectedStudent?.last_name} — {quarterLabel}
+              </div>
               {previewInvoices.map(inv => (
-                <div key={inv.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
+                <div key={inv.id} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2 gap-2">
                   <span className="text-gray-700 font-medium">{inv.invoice_number}</span>
-                  <span className="text-gray-500">{inv.issue_date}</span>
-                  <span className="font-semibold text-gray-900">${Number(inv.total).toFixed(2)}</span>
+                  <span className="text-gray-400 text-xs">{inv.issue_date}</span>
+                  <span className="font-semibold text-gray-900 whitespace-nowrap">${Number(inv.total).toFixed(2)}</span>
                 </div>
               ))}
               <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-1">
