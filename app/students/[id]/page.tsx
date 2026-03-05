@@ -206,7 +206,11 @@ export default function StudentDetailView() {
               ) : (
                 <div className="flex flex-col gap-3">
                   {invoices.map(inv => (
-                    <div key={inv.id} className="flex justify-between items-start p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div
+                      key={inv.id}
+                      onClick={() => router.push("/invoices/" + inv.id)}
+                      className="flex justify-between items-start p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
                       <div>
                         <div className="font-semibold text-sm text-gray-900">Invoice {inv.invoice_number}</div>
                         <div className="text-xs text-gray-500 mt-0.5">Issued: {inv.issue_date}</div>

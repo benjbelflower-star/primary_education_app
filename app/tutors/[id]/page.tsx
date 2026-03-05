@@ -127,7 +127,7 @@ export default function TutorDetailView() {
                 </thead>
                 <tbody>
                   {invoices.map((inv: any) => (
-                    <tr key={inv.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                    <tr key={inv.id} onClick={() => router.push("/invoices/" + inv.id)} className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer">
                       <td className="px-5 sm:px-6 py-3 text-sm text-gray-800">{inv.invoice_number}</td>
                       <td className="px-2 py-3 text-sm text-gray-800">
                         {inv.students.first_name} {inv.students.last_name}
