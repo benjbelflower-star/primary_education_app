@@ -93,7 +93,7 @@ export default function ThreadDetail() {
 
   // Sendbird real-time subscription (activates when NEXT_PUBLIC_SENDBIRD_APP_ID is set)
   useEffect(() => {
-    if (\!thread?.sendbird_channel_url) return;
+    if (!thread?.sendbird_channel_url) return;
     const unsubscribe = sendbirdProvider.subscribe(
       thread.sendbird_channel_url,
       (sbMsg) => {
