@@ -15,6 +15,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     { label: "Students", path: "/students", icon: "👥" },
     { label: "Tutors", path: "/tutors", icon: "🎓" },
     { label: "Logs", path: "/logs/new", icon: "📝" },
+    { label: "Messages", path: "/messages", icon: "💬" },
+    { label: "Notifications", path: "/notifications", icon: "🔔" },
   ];
 
   async function handleSignOut() {

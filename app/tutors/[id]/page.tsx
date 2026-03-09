@@ -94,12 +94,20 @@ export default function TutorDetailView() {
             <span className="text-gray-500 text-sm">{tutor.credential_type}</span>
           </div>
         </div>
-        <button
-          onClick={() => router.push("/tutors/" + id + "/edit")}
-          className="w-full sm:w-auto px-5 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-        >
-          Edit Profile
-        </button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => router.push("/messages/new?tutorId=" + id)}
+            className="flex-1 sm:flex-none px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+          >
+            Message
+          </button>
+          <button
+            onClick={() => router.push("/tutors/" + id + "/edit")}
+            className="flex-1 sm:flex-none px-5 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+          >
+            Edit Profile
+          </button>
+        </div>
       </div>
 
       {/* Main grid */}

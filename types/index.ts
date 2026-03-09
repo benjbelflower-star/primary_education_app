@@ -116,3 +116,63 @@ export type Guardian = {
   phone?: string;
 };
 
+// ─── Messaging ────────────────────────────────────────────────────────────────
+
+export type SenderType = 'staff' | 'tutor' | 'guardian' | 'system';
+export type ThreadType = 'direct' | 'broadcast';
+export type ThreadStatus = 'open' | 'closed';
+
+export type MessageThread = {
+  id: string;
+  school_id: string | null;
+  subject: string;
+  thread_type: ThreadType;
+  category: string;
+  status: ThreadStatus;
+  created_by_type: SenderType;
+  created_by_id: string | null;
+  created_by_name: string | null;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+  response_window_closes_at: string | null;
+  auto_reply_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Message = {
+  id: string;
+  school_id: string | null;
+  thread_id: string;
+  sender_type: SenderType;
+  sender_id: string | null;
+  sender_name: string;
+  body: string;
+  original_language: string;
+  is_auto_reply: boolean;
+  created_at: string;
+};
+
+export type ThreadParticipant = {
+  thread_id: string;
+  participant_type: SenderType;
+  participant_id: string;
+  participant_name: string | null;
+};
+
+export type AppNotification = {
+  id: string;
+  school_id: string | null;
+  recipient_type: SenderType;
+  recipient_id: string | null;
+  recipient_name: string | null;
+  notification_type: string;
+  title: string;
+  body: string;
+  related_thread_id: string | null;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+  action_url: string | null;
+  is_read: boolean;
+  created_at: string;
+};
