@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { AppNotification } from "../../types";
+import { twilioClient } from "../../lib/messaging";
 
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
@@ -81,6 +82,71 @@ async function checkForOverdueInvoices(): Promise<number> {
   return created;
 }
 
+// Inline SMS send widget — collapses to a link, expands to a phone input
+function SMSInline({
+  notification,
+  onSend,
+}: {
+  notification: AppNotification;
+  onSend: (n: AppNotification, phone: string) => Promise<{ success: boolean; provider: string; error?: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (!phone.trim()) return;
+    setSending(true);
+    const result = await onSend(notification, phone.trim());
+    setStatus(result.success
+      ? (result.provider === "placeholder" ? "Queued (Twilio placeholder)" : "Sent!")
+      : ("Error: " + result.error));
+    setSending(false);
+  }
+
+  if (status) return <span className="text-xs text-green-600 font-medium">{status}</span>;
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-xs text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer p-0"
+      >
+        📱 SMS
+      </button>
+    );
+  }
+
+  return (
+    <form onSubmit={send} className="flex gap-1 items-center">
+      <input
+        type="tel"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
+        placeholder="+1 (602) 555-0100"
+        autoFocus
+        className="px-2 py-0.5 rounded border border-gray-300 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400 w-36"
+      />
+      <button
+        type="submit"
+        disabled={sending}
+        className="text-xs text-blue-600 font-semibold bg-transparent border-none cursor-pointer p-0 disabled:text-gray-400"
+      >
+        {sending ? "..." : "Send"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-xs text-gray-400 bg-transparent border-none cursor-pointer p-0"
+      >
+        ✕
+      </button>
+    </form>
+  );
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -127,6 +193,18 @@ export default function NotificationsPage() {
     if (unreadIds.length === 0) return;
     await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  }
+
+  async function handleSMSNotification(notification: AppNotification, phone: string) {
+    const result = await twilioClient.sendSMS({ to: phone, body: notification.title + " — " + notification.body });
+    if (result.success && result.provider !== "placeholder") {
+      // Record the SMS sid back to the notification row
+      await supabase
+        .from("notifications")
+        .update({ twilio_sms_sid: result.sid, sms_sent_at: new Date().toISOString(), sms_recipient: phone })
+        .eq("id", notification.id);
+    }
+    return result;
   }
 
   async function manualScan() {
@@ -254,6 +332,7 @@ export default function NotificationsPage() {
                             View →
                           </button>
                         )}
+                        <SMSInline notification={n} onSend={handleSMSNotification} />
                       </div>
                     </div>
                   </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
+import { sendbirdProvider, twilioClient } from "../../../lib/messaging";
 import { MessageThread, Message, ThreadParticipant } from "../../../types";
 
 const TRANSLATE_LANGS = [
@@ -43,6 +44,9 @@ export default function ThreadDetail() {
   const [replyBody, setReplyBody] = useState("");
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [smsPhone, setSmsPhone] = useState("");
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsResult, setSmsResult] = useState<string | null>(null);
   // Map of messageId → translated body (local state only — translation scaffold)
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [translateTarget, setTranslateTarget] = useState<string | null>(null);
@@ -77,10 +81,49 @@ export default function ThreadDetail() {
       }
       if (partRes.data) setParticipants(partRes.data as ThreadParticipant[]);
 
+      // Subscribe to Sendbird for real-time delivery (no-op in placeholder mode)
+      if (threadRes.data?.sendbird_channel_url) {
+        await sendbirdProvider.markAsRead(threadRes.data.sendbird_channel_url);
+      }
+
       setLoading(false);
     }
     load();
   }, [id]);
+
+  // Sendbird real-time subscription (activates when NEXT_PUBLIC_SENDBIRD_APP_ID is set)
+  useEffect(() => {
+    if (\!thread?.sendbird_channel_url) return;
+    const unsubscribe = sendbirdProvider.subscribe(
+      thread.sendbird_channel_url,
+      (sbMsg) => {
+        // Convert Sendbird message to our Message shape and append
+        setMessages(prev => {
+          // Deduplicate by sender+timestamp in case Supabase already has it
+          const alreadyExists = prev.some(
+            m => m.sender_id === sbMsg.senderId && new Date(m.created_at).getTime() === sbMsg.createdAt
+          );
+          if (alreadyExists) return prev;
+          return [
+            ...prev,
+            {
+              id: String(sbMsg.messageId),
+              school_id: null,
+              thread_id: thread.id,
+              sender_type: "staff" as const,
+              sender_id: sbMsg.senderId,
+              sender_name: sbMsg.senderName,
+              body: sbMsg.message,
+              original_language: "en",
+              is_auto_reply: false,
+              created_at: new Date(sbMsg.createdAt).toISOString(),
+            },
+          ];
+        });
+      }
+    );
+    return unsubscribe;
+  }, [thread?.sendbird_channel_url]);
 
   // Scroll to bottom when messages load
   useEffect(() => {
@@ -158,6 +201,25 @@ export default function ThreadDetail() {
       .update({ status: "open", updated_at: new Date().toISOString() })
       .eq("id", thread.id);
     setThread(prev => prev ? { ...prev, status: "open" } : prev);
+  }
+
+  async function handleSendSMS(e: React.FormEvent) {
+    e.preventDefault();
+    if (!smsPhone.trim() || !thread) return;
+    setSmsSending(true);
+    setSmsResult(null);
+    const latestMsg = messages[messages.length - 1];
+    const latestBody = latestMsg ? latestMsg.body.slice(0, 140) : "";
+    const smsBody = latestMsg ? thread.subject + ": " + latestBody : thread.subject;
+    const result = await twilioClient.sendSMS({ to: smsPhone.trim(), body: smsBody });
+    if (result.success) {
+      setSmsResult(result.provider === "placeholder"
+        ? "SMS queued (Twilio not yet connected — see /api/notify/sms/route.ts)."
+        : "SMS sent. SID: " + result.sid);
+    } else {
+      setSmsResult("Failed: " + result.error);
+    }
+    setSmsSending(false);
   }
 
   // Translation scaffold — swap in a real API call here when ready
@@ -393,6 +455,47 @@ export default function ThreadDetail() {
           </div>
         </form>
       )}
+      {/* SMS via Twilio — send the latest message as a text to any phone */}
+      <details className="bg-white rounded-xl border border-gray-200">
+        <summary className="px-5 py-3 text-sm font-semibold text-gray-700 cursor-pointer select-none list-none flex items-center justify-between">
+          <span>📱 Send as SMS (Twilio)</span>
+          <span className="text-xs font-normal text-gray-400">secondary channel</span>
+        </summary>
+        <div className="border-t border-gray-100 px-5 py-4">
+          <p className="text-xs text-gray-400 mb-3">
+            Sends the latest message in this thread as an SMS to any mobile number.
+            Useful for reaching guardians or tutors who are not in the app.
+          </p>
+          <form onSubmit={handleSendSMS} className="flex gap-2 items-start flex-wrap">
+            <input
+              type="tel"
+              value={smsPhone}
+              onChange={e => setSmsPhone(e.target.value)}
+              placeholder="+1 (602) 555-0100"
+              className="flex-1 min-w-48 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={smsSending || !smsPhone.trim()}
+              className={
+                "px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors " +
+                (smsSending || !smsPhone.trim()
+                  ? "bg-gray-300 cursor-not-allowed"
+                  : "bg-slate-900 hover:bg-slate-700 cursor-pointer")
+              }
+            >
+              {smsSending ? "Sending..." : "Send SMS"}
+            </button>
+          </form>
+          {smsResult && (
+            <p className={"mt-2 text-xs rounded-lg px-3 py-2 " +
+              (smsResult.startsWith("Failed") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700")}>
+              {smsResult}
+            </p>
+          )}
+        </div>
+      </details>
+
     </div>
   );
 }

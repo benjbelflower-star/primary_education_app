@@ -136,6 +136,7 @@ export type MessageThread = {
   related_entity_id: string | null;
   response_window_closes_at: string | null;
   auto_reply_message: string | null;
+  sendbird_channel_url: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
+import { sendbirdProvider } from "../../../lib/messaging";
 import { Tutor, Student } from "../../../types";
 
 type RecipientMode = "tutor" | "guardian" | "broadcast_tutors" | "broadcast_guardians";
@@ -153,6 +154,19 @@ function ComposeForm() {
       sender_name: senderName,
       body: body.trim(),
     });
+
+    // Create Sendbird channel for real-time messaging (no-op when placeholder)
+    const channelUrl = await sendbirdProvider.createChannel({
+      threadId: thread.id,
+      name: subject.trim(),
+      userIds: allParticipants.map(p => p.participant_id),
+    });
+    if (channelUrl && channelUrl !== "") {
+      await supabase
+        .from("message_threads")
+        .update({ sendbird_channel_url: channelUrl })
+        .eq("id", thread.id);
+    }
 
     router.push("/messages/" + thread.id);
   }
