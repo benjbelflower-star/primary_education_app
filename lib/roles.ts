@@ -43,17 +43,24 @@ export type NavItem = {
   roles: AppRole[];
 };
 
+// Items are ordered so the first 4 visible to each role become the mobile tray.
+// Roles and their tray-4:
+//   admin   → Home, Students, Logs, Messages  (Alerts, Invoices… in More)
+//   teacher → Home, Students, Logs, Messages  (Alerts in More)
+//   finance → Home, Messages, Alerts, Invoices (Claims, Reports in More)
+//   tutor   → Home, Logs, Messages, Alerts    (all fit, no More needed)
+//   advisor → Home, Students, Messages, Alerts (all fit, no More needed)
 export const ALL_NAV_ITEMS: NavItem[] = [
-  { label: "Home",          path: "/",              icon: "🏠", roles: ["admin","teacher","finance","tutor","advisor"] },
-  { label: "Students",      path: "/students",      icon: "👥", roles: ["admin","teacher","advisor"] },
-  { label: "Tutors",        path: "/tutors",        icon: "🎓", roles: ["admin"] },
-  { label: "Logs",          path: "/logs/new",      icon: "📝", roles: ["admin","teacher","tutor"] },
-  { label: "Invoices",      path: "/invoices/new",  icon: "🧾", roles: ["admin","finance","tutor"] },
-  { label: "Claims",        path: "/claims/new",    icon: "📦", roles: ["admin","finance"] },
-  { label: "Reports",       path: "/reports/tutor-compliance", icon: "📊", roles: ["admin","finance"] },
-  { label: "Messages",      path: "/messages",      icon: "💬", roles: ["admin","teacher","finance","tutor","advisor"] },
-  { label: "Alerts",        path: "/notifications", icon: "🔔", roles: ["admin","teacher","finance","tutor","advisor"] },
-  { label: "Users",         path: "/admin/users",   icon: "⚙️", roles: ["admin"] },
+  { label: "Home",     path: "/",              icon: "🏠", roles: ["admin","teacher","finance","tutor","advisor"] },
+  { label: "Students", path: "/students",      icon: "👥", roles: ["admin","teacher","advisor"] },
+  { label: "Logs",     path: "/logs/new",      icon: "📝", roles: ["admin","teacher","tutor"] },
+  { label: "Messages", path: "/messages",      icon: "💬", roles: ["admin","teacher","finance","tutor","advisor"] },
+  { label: "Alerts",   path: "/notifications", icon: "🔔", roles: ["admin","teacher","finance","tutor","advisor"] },
+  { label: "Invoices", path: "/invoices/new",  icon: "🧾", roles: ["admin","finance","tutor"] },
+  { label: "Claims",   path: "/claims/new",    icon: "📦", roles: ["admin","finance"] },
+  { label: "Reports",  path: "/reports/tutor-compliance", icon: "📊", roles: ["admin","finance"] },
+  { label: "Tutors",   path: "/tutors",        icon: "🎓", roles: ["admin"] },
+  { label: "Users",    path: "/admin/users",   icon: "⚙️", roles: ["admin"] },
 ];
 
 // ─── Page-level access ────────────────────────────────────────────────────────
