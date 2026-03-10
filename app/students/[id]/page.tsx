@@ -112,6 +112,12 @@ export default function StudentDetailView() {
     { id: "compliance", label: "Compliance Note" },
   ];
 
+  // SIS quick-nav tiles (above accordion)
+  const sisLinks = [
+    { label: "Schedule", icon: "📅", path: "/students/" + id + "/schedule", desc: "Classes & calendar" },
+    { label: "Grades",   icon: "📊", path: "/students/" + id + "/grades",   desc: "GPA & assignments" },
+  ];
+
   return (
     <div className="px-4 py-8 sm:px-8 sm:py-10 max-w-2xl mx-auto font-sans">
 
@@ -134,20 +140,49 @@ export default function StudentDetailView() {
             <span className="text-gray-500 text-sm">Grade {student.grade_level}</span>
           </div>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => router.push("/students/" + id + "/schedule")}
+            className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 transition-colors cursor-pointer border-none"
+          >
+            Schedule
+          </button>
+          <button
+            onClick={() => router.push("/students/" + id + "/grades")}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors cursor-pointer border-none"
+          >
+            Grades
+          </button>
           <button
             onClick={() => router.push("/messages/new?studentId=" + id)}
-            className="flex-1 sm:flex-none px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
           >
             Message Guardian
           </button>
           <button
             onClick={() => router.push("/students/" + id + "/edit")}
-            className="flex-1 sm:flex-none px-5 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
           >
-            Edit Profile
+            Edit
           </button>
         </div>
+      </div>
+
+      {/* SIS Quick Nav */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {sisLinks.map(link => (
+          <button
+            key={link.label}
+            onClick={() => router.push(link.path)}
+            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer text-left"
+          >
+            <span className="text-2xl">{link.icon}</span>
+            <div>
+              <p className="font-semibold text-sm text-gray-900">{link.label}</p>
+              <p className="text-xs text-gray-400">{link.desc}</p>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Accordion Sections */}
