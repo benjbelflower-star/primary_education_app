@@ -86,14 +86,20 @@ export type Tutor = {
 };
 
 export type Student = {
-  id: string; // The database primary key for the student record
+  id: string;
   first_name: string;
   last_name: string;
+  preferred_name: string | null;
   grade_level: string | null;
   school_id: string;
   status: 'active' | 'inactive' | 'graduated';
   guardian_name: string | null;
   guardian_email: string | null;
+  photo_url: string | null;
+  primary_language: string | null;
+  homeroom_staff_id: string | null;
+  advisor_id: string | null;
+  classifications: string[];
   created_at: string;
 };
 
