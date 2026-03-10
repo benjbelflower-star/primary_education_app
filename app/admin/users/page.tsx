@@ -19,9 +19,162 @@ type UserRow = {
 
 type RoleOption = { id: string; name: AppRole };
 
+type InviteForm = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: AppRole | "";
+};
+
 function cx(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
+
+// ─── Add User Modal ────────────────────────────────────────────────────────────
+
+function AddUserModal({
+  roleOptions,
+  schoolId,
+  onClose,
+  onSuccess,
+}: {
+  roleOptions: RoleOption[];
+  schoolId: string;
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}) {
+  const [form, setForm] = useState<InviteForm>({ first_name: "", last_name: "", email: "", role: "" });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  function set(field: keyof InviteForm, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.email.trim()) { setErr("Email is required."); return; }
+    setSaving(true);
+    setErr("");
+
+    const res = await fetch("/api/users/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: form.email.trim(),
+        first_name: form.first_name.trim() || null,
+        last_name: form.last_name.trim() || null,
+        school_id: schoolId,
+        role_name: form.role || null,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      setErr(json.error ?? "Something went wrong.");
+      setSaving(false);
+      return;
+    }
+
+    onSuccess(json.provider === "placeholder"
+      ? "User record created (invite email skipped — service key not configured)."
+      : `Invite sent to ${form.email.trim()}.`);
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "8px 10px",
+    borderRadius: 8,
+    border: "1px solid #e2e8f0",
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: "block",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#475569",
+    marginBottom: 4,
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 40 }}
+      />
+      {/* Modal */}
+      <div style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        zIndex: 50, backgroundColor: "white", borderRadius: 16, padding: "28px 24px",
+        width: "min(480px, calc(100vw - 32px))", boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: 0 }}>Add User</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#94a3b8", lineHeight: 1 }}>×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div>
+              <label style={labelStyle}>First Name</label>
+              <input style={inputStyle} value={form.first_name} onChange={e => set("first_name", e.target.value)} placeholder="Jane" />
+            </div>
+            <div>
+              <label style={labelStyle}>Last Name</label>
+              <input style={inputStyle} value={form.last_name} onChange={e => set("last_name", e.target.value)} placeholder="Smith" />
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Email <span style={{ color: "#ef4444" }}>*</span></label>
+            <input style={inputStyle} type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="jane@example.com" required />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Role</label>
+            <select
+              style={inputStyle}
+              value={form.role}
+              onChange={e => set("role", e.target.value)}
+            >
+              <option value="">— assign later —</option>
+              {APP_ROLES.map(r => (
+                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+              ))}
+            </select>
+          </div>
+
+          {err && (
+            <p style={{ fontSize: 13, color: "#ef4444", margin: 0 }}>{err}</p>
+          )}
+
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", background: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#64748b" }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#0f172a", color: "white", fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1 }}
+            >
+              {saving ? "Sending..." : "Send Invite"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
+// ─── User Management ──────────────────────────────────────────────────────────
 
 function UserManagement() {
   const { schoolId } = useRole();
@@ -29,6 +182,8 @@ function UserManagement() {
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState("");
 
   useEffect(() => {
     if (!schoolId) return;
@@ -125,6 +280,16 @@ function UserManagement() {
     }, 2000);
   }
 
+  function handleInviteSuccess(msg: string) {
+    setShowAddUser(false);
+    setInviteSuccess(msg);
+    // Reload user list after a brief delay
+    setTimeout(() => {
+      if (schoolId) load(schoolId);
+    }, 800);
+    setTimeout(() => setInviteSuccess(""), 6000);
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <p className="text-gray-400 text-sm">Loading users...</p>
@@ -134,11 +299,19 @@ function UserManagement() {
   return (
     <div className="px-4 py-8 sm:px-8 sm:py-10 max-w-4xl mx-auto font-sans">
 
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">User Management</h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Assign roles to control what each person can access.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">User Management</h1>
+          <p className="text-sm text-gray-400 mt-1">
+            Assign roles to control what each person can access.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddUser(true)}
+          className="shrink-0 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-700 cursor-pointer border-none"
+        >
+          + Add User
+        </button>
       </div>
 
       {/* Role reference card */}
@@ -162,8 +335,21 @@ function UserManagement() {
         </div>
       </div>
 
+      {inviteSuccess && (
+        <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm font-medium">{inviteSuccess}</div>
+      )}
+
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">{error}</div>
+      )}
+
+      {showAddUser && schoolId && (
+        <AddUserModal
+          roleOptions={roleOptions}
+          schoolId={schoolId}
+          onClose={() => setShowAddUser(false)}
+          onSuccess={handleInviteSuccess}
+        />
       )}
 
       {/* User table */}
