@@ -103,11 +103,16 @@ export default function StudentRoster() {
           <div className="flex-1">Student Name</div>
           <div className="w-24">Grade</div>
           <div className="w-24">Status</div>
-          <div className="w-16 text-right">Action</div>
+          <div className="w-4 shrink-0" />
         </div>
 
         {students.map(student => (
-          <div key={student.id} className="flex flex-wrap gap-3 items-center px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors">
+          <div
+            key={student.id}
+            onClick={() => router.push("/students/" + student.id)}
+            style={{ cursor: "pointer" }}
+            className="flex gap-3 items-center px-5 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors"
+          >
             <StudentAvatar student={student} />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-gray-900 text-sm truncate">
@@ -117,18 +122,11 @@ export default function StudentRoster() {
               </div>
               <div className="text-xs text-gray-400 truncate">{student.guardian_email || "No email on file"}</div>
             </div>
-            <div className="w-24 text-sm text-gray-500">{student.grade_level || "N/A"}</div>
-            <div className="w-24">
+            <div className="w-24 text-sm text-gray-500 hidden sm:block">{student.grade_level || "N/A"}</div>
+            <div className="w-24 hidden sm:block">
               <span className={getStatusClass(student.status)}>{student.status}</span>
             </div>
-            <div className="w-16 text-right">
-              <button
-                onClick={() => router.push("/students/" + student.id)}
-                className="text-blue-500 text-sm font-semibold hover:text-blue-700 bg-transparent border-none cursor-pointer p-0"
-              >
-                View
-              </button>
-            </div>
+            <div className="text-gray-300 text-base shrink-0">›</div>
           </div>
         ))}
       </div>
