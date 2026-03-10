@@ -3,39 +3,55 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabaseClient";
+import { RoleProvider, useRole } from "../contexts/RoleContext";
+import { navForRole, ROLE_LABELS, ROLE_COLORS, AppRole, ALL_NAV_ITEMS } from "../lib/roles";
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
+function cx(...classes: (string | false | null | undefined)[]) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function NavContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { role, loading } = useRole();
 
   const isLoginPage = pathname === "/login";
-
-  const navItems = [
-    { label: "Home", path: "/", icon: "🏠" },
-    { label: "Students", path: "/students", icon: "👥" },
-    { label: "Tutors", path: "/tutors", icon: "🎓" },
-    { label: "Logs", path: "/logs/new", icon: "📝" },
-    { label: "Messages", path: "/messages", icon: "💬" },
-    { label: "Notifications", path: "/notifications", icon: "🔔" },
-  ];
 
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push("/login");
   }
 
-  // Don't show any nav chrome on the login page
-  if (isLoginPage) {
-    return <>{children}</>;
+  if (isLoginPage) return <>{children}</>;
+
+  // While role is loading show all nav items to avoid layout flash
+  const navItems = loading || !role ? ALL_NAV_ITEMS : navForRole(role as AppRole);
+
+  // Active-state: match exact path or path prefix (for nested routes)
+  function isActive(path: string) {
+    if (path === "/") return pathname === "/";
+    return pathname.startsWith(path);
   }
 
   return (
     <>
       {/* Desktop Sidebar */}
       <aside className="desktop-sidebar">
-        <div style={{ padding: "24px", fontWeight: 800, color: "white", fontSize: "20px" }}>
+        <div style={{ padding: "20px 24px 12px", fontWeight: 800, color: "white", fontSize: "20px" }}>
           ESA Ops
         </div>
+
+        {/* Role badge */}
+        {role && !loading && (
+          <div style={{ padding: "0 16px 16px" }}>
+            <span className={cx(
+              "inline-flex px-2 py-0.5 rounded-full text-xs font-semibold",
+              ROLE_COLORS[role as AppRole]
+            )}>
+              {ROLE_LABELS[role as AppRole]}
+            </span>
+          </div>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
           {navItems.map((item) => (
@@ -43,21 +59,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               key={item.path}
               href={item.path}
               style={{
-                padding: "16px 24px",
+                padding: "14px 24px",
                 textDecoration: "none",
-                color: pathname === item.path ? "white" : "#94a3b8",
-                backgroundColor: pathname === item.path ? "#1e293b" : "transparent",
-                fontSize: "15px",
+                color: isActive(item.path) ? "white" : "#94a3b8",
+                backgroundColor: isActive(item.path) ? "#1e293b" : "transparent",
+                fontSize: "14px",
                 fontWeight: 600,
               }}
             >
-              <span style={{ marginRight: "12px" }}>{item.icon}</span>
+              <span style={{ marginRight: "10px" }}>{item.icon}</span>
               {item.label}
             </Link>
           ))}
         </div>
 
-        {/* Sign out at bottom of sidebar */}
         <button
           onClick={handleSignOut}
           style={{
@@ -92,21 +107,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             href={item.path}
             style={{
               textDecoration: "none",
-              color: pathname === item.path ? "#0f172a" : "#64748b",
+              color: isActive(item.path) ? "#0f172a" : "#64748b",
               textAlign: "center",
               flex: 1,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
+              minWidth: 0,
             }}
           >
-            <div style={{ fontSize: "20px" }}>{item.icon}</div>
-            <div style={{ fontSize: "10px", marginTop: "4px", fontWeight: pathname === item.path ? 700 : 400 }}>
+            <div style={{ fontSize: "18px" }}>{item.icon}</div>
+            <div style={{ fontSize: "9px", marginTop: "3px", fontWeight: isActive(item.path) ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>
               {item.label}
             </div>
           </Link>
         ))}
-        {/* Sign out in mobile tray */}
         <button
           onClick={handleSignOut}
           style={{
@@ -120,12 +135,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             alignItems: "center",
             cursor: "pointer",
             padding: 0,
+            minWidth: 0,
           }}
         >
-          <div style={{ fontSize: "20px" }}>🚪</div>
-          <div style={{ fontSize: "10px", marginTop: "4px", fontWeight: 400 }}>Sign Out</div>
+          <div style={{ fontSize: "18px" }}>🚪</div>
+          <div style={{ fontSize: "9px", marginTop: "3px", fontWeight: 400 }}>Sign Out</div>
         </button>
       </nav>
     </>
+  );
+}
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <RoleProvider>
+      <NavContent>{children}</NavContent>
+    </RoleProvider>
   );
 }

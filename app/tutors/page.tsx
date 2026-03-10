@@ -1,12 +1,14 @@
 "use client";
 
+import RoleGuard from "../../components/RoleGuard";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { Tutor } from "../../types";
 import Link from "next/link";
 
-export default function TutorManagement() {
+function TutorManagementInner() {
   const router = useRouter();
   const [tutors, setTutors] = useState<(Tutor & { invoice_count: number })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,5 +122,13 @@ export default function TutorManagement() {
         </table>
       </div>
     </div>
+  );
+}
+
+export default function TutorManagement() {
+  return (
+    <RoleGuard allowedRoles={["admin"]}>
+      <TutorManagementInner />
+    </RoleGuard>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import RoleGuard from "../../../../components/RoleGuard";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
@@ -11,7 +13,7 @@ type ComplianceTutor = Tutor & {
   complianceStatus: "expired" | "warning" | "valid";
 };
 
-export default function TutorComplianceReport() {
+function TutorComplianceReportInner() {
   const router = useRouter();
   const [tutors, setTutors] = useState<ComplianceTutor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,5 +115,13 @@ export default function TutorComplianceReport() {
         </table>
       </div>
     </div>
+  );
+}
+
+export default function TutorComplianceReport() {
+  return (
+    <RoleGuard allowedRoles={["admin", "finance"]}>
+      <TutorComplianceReportInner />
+    </RoleGuard>
   );
 }
