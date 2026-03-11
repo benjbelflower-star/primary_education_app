@@ -14,6 +14,17 @@ type GuardianRow = {
   email: string | null;
 };
 
+type CommRow = {
+  id: string;
+  subject: string;
+  thread_type: string;
+  status: string;
+  category: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by_name: string | null;
+};
+
 type StaffName = { first_name: string; last_name: string } | null;
 type UserName  = { first_name: string; last_name: string } | null;
 
@@ -37,6 +48,15 @@ function avatarColor(name: string) {
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
 }
 
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60)  return mins <= 1 ? "just now" : `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 function InfoCell({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
@@ -54,30 +74,37 @@ export default function StudentDetailView() {
   const { id } = useParams();
   const router = useRouter();
 
-  const [student,        setStudent]        = useState<Student | null>(null);
-  const [invoices,       setInvoices]       = useState<Invoice[]>([]);
-  const [logs,           setLogs]           = useState<ServiceLog[]>([]);
-  const [guardians,      setGuardians]      = useState<GuardianRow[]>([]);
-  const [homeroomTeacher,setHomeroomTeacher]= useState<StaffName>(null);
-  const [advisor,        setAdvisor]        = useState<UserName>(null);
-  const [gpa,            setGpa]            = useState<number | null>(null);
-  const [loading,        setLoading]        = useState(true);
-  const [openSection,    setOpenSection]    = useState<string | null>("service-history");
+  const [student,         setStudent]         = useState<Student | null>(null);
+  const [invoices,        setInvoices]        = useState<Invoice[]>([]);
+  const [logs,            setLogs]            = useState<ServiceLog[]>([]);
+  const [guardians,       setGuardians]       = useState<GuardianRow[]>([]);
+  const [recentComms,     setRecentComms]     = useState<CommRow[]>([]);
+  const [homeroomTeacher, setHomeroomTeacher] = useState<StaffName>(null);
+  const [advisor,         setAdvisor]         = useState<UserName>(null);
+  const [gpa,             setGpa]             = useState<number | null>(null);
+  const [loading,         setLoading]         = useState(true);
+  const [openSection,     setOpenSection]     = useState<string | null>("service-history");
 
-  const [guardianName,   setGuardianName]   = useState("");
-  const [guardianEmail,  setGuardianEmail]  = useState("");
-  const [isUpdating,     setIsUpdating]     = useState(false);
-  const [updateMessage,  setUpdateMessage]  = useState("");
+  // Guardian editable fields
+  const [guardianName,    setGuardianName]    = useState("");
+  const [guardianEmail,   setGuardianEmail]   = useState("");
+  const [guardianPhone,   setGuardianPhone]   = useState("");
+  const [primaryLanguage, setPrimaryLanguage] = useState("");
+  const [isUpdating,      setIsUpdating]      = useState(false);
+  const [updateMessage,   setUpdateMessage]   = useState("");
 
   useEffect(() => {
     if (!id) return;
     async function load() {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
       const [
         { data: studentData },
         { data: invoiceData },
         { data: logData },
         { data: guardianData },
         { data: gradeData },
+        { data: commsData },
       ] = await Promise.all([
         supabase
           .from("students")
@@ -111,6 +138,15 @@ export default function StudentDetailView() {
           .select("gpa_points")
           .eq("student_id", id as string)
           .not("gpa_points", "is", null),
+
+        supabase
+          .from("message_threads")
+          .select("id, subject, thread_type, status, category, created_at, updated_at, created_by_name")
+          .eq("related_entity_id", id as string)
+          .eq("related_entity_type", "student")
+          .gte("created_at", thirtyDaysAgo)
+          .order("updated_at", { ascending: false })
+          .limit(25),
       ]);
 
       if (studentData) {
@@ -118,20 +154,23 @@ export default function StudentDetailView() {
         setStudent(s as Student);
         setGuardianName(s.guardian_name ?? "");
         setGuardianEmail(s.guardian_email ?? "");
+        setGuardianPhone(s.guardian_phone ?? "");
+        setPrimaryLanguage(s.primary_language ?? "");
         if (s.homeroom_staff) setHomeroomTeacher(s.homeroom_staff);
         if (s.advisor_user)   setAdvisor(s.advisor_user);
       }
 
       if (invoiceData) setInvoices(invoiceData as Invoice[]);
       if (logData)     setLogs(logData as ServiceLog[]);
+      if (commsData)   setRecentComms(commsData as CommRow[]);
 
       if (guardianData && guardianData.length > 0) {
         setGuardians(
           (guardianData as any[]).map(row => ({
-            first_name:   row.guardians?.first_name  ?? "",
-            last_name:    row.guardians?.last_name   ?? "",
-            relationship: row.relationship           ?? null,
-            email:        row.guardians?.email       ?? null,
+            first_name:   row.guardians?.first_name ?? "",
+            last_name:    row.guardians?.last_name  ?? "",
+            relationship: row.relationship          ?? null,
+            email:        row.guardians?.email      ?? null,
           }))
         );
       }
@@ -152,15 +191,21 @@ export default function StudentDetailView() {
     setUpdateMessage("Saving...");
     const { error } = await supabase
       .from("students")
-      .update({ guardian_name: guardianName, guardian_email: guardianEmail })
+      .update({
+        guardian_name:    guardianName,
+        guardian_email:   guardianEmail,
+        guardian_phone:   guardianPhone  || null,
+        primary_language: primaryLanguage || null,
+      })
       .eq("id", id);
     if (error) {
       setUpdateMessage("Error: " + error.message);
     } else {
-      setUpdateMessage("Guardian saved!");
+      setUpdateMessage("Saved!");
       if (student) setStudent({ ...student, guardian_name: guardianName, guardian_email: guardianEmail });
     }
     setIsUpdating(false);
+    setTimeout(() => setUpdateMessage(""), 3000);
   }
 
   function toggle(section: string) {
@@ -197,15 +242,15 @@ export default function StudentDetailView() {
     ? `${advisor.first_name} ${advisor.last_name}`
     : null;
 
-  const sisLinks = [
-    { label: "Schedule", icon: "📅", path: "/students/" + id + "/schedule", desc: "Classes & calendar" },
-    { label: "Grades",   icon: "📊", path: "/students/" + id + "/grades",   desc: "GPA & assignments" },
-  ];
-
   const statusColor: Record<string, string> = {
     active:    "bg-teal-50 text-teal-700",
     inactive:  "bg-gray-100 text-gray-500",
     graduated: "bg-purple-50 text-purple-700",
+  };
+
+  const threadStatusColor: Record<string, string> = {
+    open:   "bg-teal-50 text-teal-700",
+    closed: "bg-gray-100 text-gray-500",
   };
 
   return (
@@ -292,11 +337,11 @@ export default function StudentDetailView() {
         {/* Divider */}
         <div className="border-t border-gray-100 my-4" />
 
-        {/* Quick-info grid: 2 cols mobile, 3 cols sm+ */}
+        {/* Quick-info grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
           <InfoCell label="Grade"            value={student.grade_level ? `Grade ${student.grade_level}` : null} />
           <InfoCell label="GPA"              value={gpa !== null ? gpa.toFixed(2) : null} />
-          <InfoCell label="Primary Language" value={student.primary_language} />
+          <InfoCell label="Primary Language" value={(student as any).primary_language} />
           <InfoCell label="Homeroom Teacher" value={teacherDisplay} />
           <InfoCell label="Advisor"          value={advisorDisplay} />
           <InfoCell label="Guardian(s)"      value={guardianDisplay} />
@@ -307,9 +352,9 @@ export default function StudentDetailView() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
             Student Classifications
           </p>
-          {student.classifications && student.classifications.length > 0 ? (
+          {(student as any).classifications && (student as any).classifications.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
-              {student.classifications.map(c => (
+              {((student as any).classifications as string[]).map(c => (
                 <span key={c}
                   className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
                   {c}
@@ -324,7 +369,10 @@ export default function StudentDetailView() {
 
       {/* SIS Quick Nav */}
       <div className="grid grid-cols-2 gap-3 mb-4">
-        {sisLinks.map(link => (
+        {[
+          { label: "Schedule", icon: "📅", path: "/students/" + id + "/schedule", desc: "Classes & calendar" },
+          { label: "Grades",   icon: "📊", path: "/students/" + id + "/grades",   desc: "GPA & assignments" },
+        ].map(link => (
           <button
             key={link.label}
             onClick={() => router.push(link.path)}
@@ -341,6 +389,71 @@ export default function StudentDetailView() {
 
       {/* ── Accordion sections ── */}
       <div className="flex flex-col gap-2">
+
+        {/* Recent Communication */}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <button onClick={() => toggle("comms")}
+            className="w-full flex items-center justify-between px-5 py-4 bg-transparent border-none cursor-pointer text-left hover:bg-gray-50 transition-colors">
+            <span className="text-base font-semibold text-gray-900">
+              Recent Communication
+              <span className="ml-2 text-xs font-normal text-gray-400">
+                (last 30 days{recentComms.length > 0 ? ` · ${recentComms.length}` : ""})
+              </span>
+            </span>
+            <span className={cx("text-gray-400 text-lg transition-transform inline-block", openSection === "comms" && "rotate-90")}>›</span>
+          </button>
+          {openSection === "comms" && (
+            <div className="border-t border-gray-100">
+              {recentComms.length === 0 ? (
+                <p className="px-5 py-4 text-gray-400 text-sm">No messages in the past 30 days.</p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {recentComms.map(comm => (
+                    <button
+                      key={comm.id}
+                      onClick={() => router.push("/messages/" + comm.id)}
+                      className="w-full flex items-center gap-3 px-5 py-3 bg-transparent border-none cursor-pointer text-left hover:bg-blue-50 transition-colors group"
+                    >
+                      {/* Thread type indicator */}
+                      <span className={cx(
+                        "shrink-0 w-2 h-2 rounded-full mt-0.5",
+                        comm.thread_type === "broadcast" ? "bg-purple-400" : "bg-blue-400"
+                      )} />
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                          {comm.subject}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {comm.created_by_name ?? "Staff"}
+                          {comm.category ? " · " + comm.category : ""}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <span className={cx(
+                          "px-1.5 py-0.5 rounded text-xs font-semibold",
+                          threadStatusColor[comm.status] ?? "bg-gray-100 text-gray-500"
+                        )}>
+                          {comm.status}
+                        </span>
+                        <span className="text-xs text-gray-400">{timeAgo(comm.updated_at)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="px-5 py-3 border-t border-gray-50">
+                <button
+                  onClick={() => router.push("/messages/new?studentId=" + id)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-transparent border-none cursor-pointer p-0 transition-colors"
+                >
+                  + New message about this student
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Service History */}
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -445,7 +558,8 @@ export default function StudentDetailView() {
                   ))}
                 </div>
               )}
-              {/* Legacy editable contact fields */}
+
+              {/* Editable contact fields */}
               <form onSubmit={handleUpdateGuardian} className="flex flex-col gap-3">
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
@@ -455,14 +569,35 @@ export default function StudentDetailView() {
                     placeholder="e.g. Jane Doe"
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
+                      Email Address
+                    </label>
+                    <input type="email" value={guardianEmail} onChange={e => setGuardianEmail(e.target.value)}
+                      placeholder="guardian@example.com"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
+                      Phone Number
+                    </label>
+                    <input type="tel" value={guardianPhone} onChange={e => setGuardianPhone(e.target.value)}
+                      placeholder="(555) 000-0000"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
-                    Email Address
+                    Primary Language
                   </label>
-                  <input type="email" value={guardianEmail} onChange={e => setGuardianEmail(e.target.value)}
-                    placeholder="guardian@example.com"
+                  <input type="text" value={primaryLanguage} onChange={e => setPrimaryLanguage(e.target.value)}
+                    placeholder="e.g. Spanish"
                     className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
+
                 <button type="submit" disabled={isUpdating}
                   className={cx("w-full py-2.5 rounded-lg text-white text-sm font-semibold transition-colors mt-1",
                     isUpdating ? "bg-gray-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-700 cursor-pointer")}>
