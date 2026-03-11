@@ -314,10 +314,10 @@ function exportCSV(fields: FieldDef[], rows: Record<string, unknown>[], entityLa
 // ─── Save Modal ───────────────────────────────────────────────────────────────
 
 function SaveModal({
-  initialName, initialDesc, isUpdate, saving, onSave, onClose,
+  initialName, initialDesc, isUpdate, saving, saveError, onSave, onClose,
 }: {
   initialName: string; initialDesc: string; isUpdate: boolean;
-  saving: boolean;
+  saving: boolean; saveError: string;
   onSave: (name: string, desc: string, saveAsNew: boolean) => void;
   onClose: () => void;
 }) {
@@ -354,6 +354,18 @@ function SaveModal({
               Save as a new report (keep the original)
             </label>
           )}
+          {saveError && (
+            <div style={{ padding: "8px 12px", backgroundColor: "#fef2f2", borderRadius: 8, border: "1px solid #fecaca", fontSize: 12, color: "#b91c1c" }}>
+              <strong>Save failed:</strong> {saveError}
+              {saveError.includes("does not exist") || saveError.includes("relation") ? (
+                <p style={{ margin: "4px 0 0", color: "#dc2626" }}>
+                  Run migration <code style={{ backgroundColor: "#fee2e2", padding: "1px 4px", borderRadius: 3 }}>010_saved_reports.sql</code> in your Supabase SQL Editor first.
+                </p>
+              ) : saveError.includes("unique") || saveError.includes("duplicate") ? (
+                <p style={{ margin: "4px 0 0", color: "#dc2626" }}>A report with this name already exists. Choose a different name.</p>
+              ) : null}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
             <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", background: "white", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "#64748b" }}>Cancel</button>
             <button onClick={() => name.trim() && onSave(name.trim(), desc.trim(), asNew)} disabled={saving || !name.trim()}
@@ -389,6 +401,7 @@ function ReportBuilderInner() {
   const [saveName,       setSaveName]       = useState("");
   const [saveDesc,       setSaveDesc]       = useState("");
   const [saving,         setSaving]         = useState(false);
+  const [saveError,      setSaveError]      = useState("");
   const [deleteConfirm,  setDeleteConfirm]  = useState<string | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [viewSaved,      setViewSaved]      = useState(false);
@@ -398,9 +411,14 @@ function ReportBuilderInner() {
 
   async function loadSavedReports() {
     if (!schoolId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("saved_reports").select("*").eq("school_id", schoolId)
       .order("updated_at", { ascending: false });
+    if (error) {
+      console.error("[loadSavedReports]", error.message);
+      // Table may not exist yet — migration 010 needs to be run in Supabase
+      return;
+    }
     if (data) setSavedReports(data as SavedReport[]);
   }
 
@@ -446,18 +464,33 @@ function ReportBuilderInner() {
   async function handleSaveReport(name: string, desc: string, saveAsNew: boolean) {
     if (!entity || !schoolId) return;
     setSaving(true);
+    setSaveError("");
     const payload = {
       school_id: schoolId, report_name: name, description: desc || null,
       entity_key: entity.key, selected_fields: selectedFields,
       filters: filters.map(({ field, op, value }) => ({ field, op, value })),
       sort_field: sortField || null, sort_dir: sortDir, row_limit: limit,
     };
+
+    let opError: string | null = null;
+
     if (activeReportId && !saveAsNew) {
-      await supabase.from("saved_reports").update(payload).eq("id", activeReportId);
+      const { error } = await supabase.from("saved_reports").update(payload).eq("id", activeReportId);
+      if (error) opError = error.message;
     } else {
-      const { data } = await supabase.from("saved_reports").insert(payload).select("id").single();
-      if (data) setActiveReportId((data as any).id);
+      const { data, error } = await supabase.from("saved_reports").insert(payload).select("id").single();
+      if (error) opError = error.message;
+      else if (data) setActiveReportId((data as any).id);
     }
+
+    if (opError) {
+      // Surface the DB error — most likely: table doesn't exist (run migration 010),
+      // duplicate report name, or RLS policy blocking the insert.
+      setSaveError(opError);
+      setSaving(false);
+      return;
+    }
+
     setSaveName(name); setSaveDesc(desc);
     await loadSavedReports();
     setSaving(false); setSaveModalOpen(false);
@@ -946,7 +979,8 @@ function ReportBuilderInner() {
       {/* Save modal */}
       {saveModalOpen && (
         <SaveModal initialName={saveName} initialDesc={saveDesc} isUpdate={!!activeReportId}
-          saving={saving} onSave={handleSaveReport} onClose={() => setSaveModalOpen(false)} />
+          saving={saving} saveError={saveError} onSave={handleSaveReport}
+          onClose={() => { setSaveModalOpen(false); setSaveError(""); }} />
       )}
 
       {/* Delete confirm */}
