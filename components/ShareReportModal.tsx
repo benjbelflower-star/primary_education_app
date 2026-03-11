@@ -29,6 +29,21 @@ export function ShareReportModal({
   const [sharing,    setSharing]    = useState<string | null>(null);
   const [removing,   setRemoving]   = useState<string | null>(null);
   const [shareError, setShareError] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
+
+  // Get current user info for the notification email
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      setCurrentUserEmail(user.email ?? "");
+      // Try to get display name from users table
+      supabase.from("users").select("first_name, last_name").eq("id", user.id).single()
+        .then(({ data }) => {
+          if (data) setCurrentUserName(`${data.first_name} ${data.last_name}`.trim());
+        });
+    });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -84,6 +99,8 @@ export function ShareReportModal({
   async function share(rec: SystemRecipient) {
     if (existing.some(e => e.id === rec.id)) return;
     setSharing(rec.id); setShareError("");
+
+    // 1. Record the share in the database
     const payload: Record<string, unknown> = {
       school_id: schoolId, saved_report_id: reportId,
       recipient_name: rec.name, recipient_email: rec.email,
@@ -91,8 +108,36 @@ export function ShareReportModal({
     if (rec.type === "user")     payload.recipient_user_id     = rec.id;
     if (rec.type === "guardian") payload.recipient_guardian_id = rec.id;
     const { error } = await supabase.from("report_shares").insert(payload);
-    if (error) setShareError(error.message);
-    else { setExisting(prev => [...prev, rec]); setSearch(""); setCandidates([]); }
+
+    if (error) {
+      setShareError(error.message);
+      setSharing(null);
+      return;
+    }
+
+    // 2. Send email notification
+    if (rec.email) {
+      try {
+        await fetch("/api/share-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientEmail: rec.email,
+            recipientName:  rec.name,
+            reportName,
+            sharedByName:   currentUserName || undefined,
+            sharedByEmail:  currentUserEmail || undefined,
+          }),
+        });
+        // We don't block on email errors — the share is already recorded
+      } catch (_) {
+        // Non-fatal: DB share succeeded, email failed silently
+      }
+    }
+
+    setExisting(prev => [...prev, rec]);
+    setSearch("");
+    setCandidates([]);
     setSharing(null);
   }
 

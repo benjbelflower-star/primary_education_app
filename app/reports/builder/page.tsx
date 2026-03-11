@@ -589,74 +589,6 @@ function ReportBuilderInner() {
         )}
       </div>
 
-      {/* ── Saved Reports ── */}
-      {savedReports.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Saved Reports</p>
-            <span className="text-xs text-gray-400">{savedReports.length} saved</span>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-            {savedReports.map(r => {
-              const isActive = r.id === activeReportId;
-              const cat = CATALOG.find(c => c.key === r.entity_key);
-              return (
-                <div key={r.id}
-                  className={cx(
-                    "shrink-0 w-52 rounded-xl border p-3.5 cursor-pointer transition-all group flex flex-col gap-1.5",
-                    isActive ? "border-slate-900 bg-slate-900" : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm"
-                  )}
-                  onClick={() => loadReport(r)}>
-                  <div className="flex items-start justify-between gap-1">
-                    <p className={cx("font-semibold text-sm leading-snug line-clamp-2", isActive ? "text-white" : "text-gray-900")}>
-                      {r.report_name}
-                    </p>
-                    <button
-                      onClick={e => { e.stopPropagation(); setDeleteConfirm(r.id); }}
-                      className={cx(
-                        "shrink-0 w-5 h-5 flex items-center justify-center text-sm font-bold bg-transparent border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity",
-                        isActive ? "text-slate-400 hover:text-red-300" : "text-gray-400 hover:text-red-500"
-                      )}>×</button>
-                  </div>
-                  {r.description && (
-                    <p className={cx("text-xs leading-snug line-clamp-2", isActive ? "text-slate-400" : "text-gray-400")}>
-                      {r.description}
-                    </p>
-                  )}
-                  <p className={cx("text-xs", isActive ? "text-slate-400" : "text-gray-400")}>{cat?.label ?? r.entity_key}</p>
-                  <div className={cx("flex items-center justify-between text-xs mt-auto pt-1.5 border-t", isActive ? "border-slate-700 text-slate-400" : "border-gray-100 text-gray-400")}>
-                    <span>Run {r.run_count}×</span>
-                    <span>{timeAgo(r.last_run_at)}</span>
-                  </div>
-                  <div className="flex gap-1.5 mt-0.5">
-                    <button
-                      onClick={e => { e.stopPropagation(); loadReport(r); setTimeout(() => runReport(), 50); }}
-                      className={cx(
-                        "flex-1 py-1 rounded-lg text-xs font-semibold border-none cursor-pointer transition-colors",
-                        isActive ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-900 text-white hover:bg-slate-700"
-                      )}>
-                      Run
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); loadReport(r); setShareModalOpen(true); }}
-                      title="Share"
-                      className={cx(
-                        "px-2 py-1 rounded-lg border-none cursor-pointer transition-colors",
-                        isActive ? "bg-slate-700 text-white hover:bg-slate-600" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      )}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col lg:flex-row gap-5">
 
         {/* Left panel */}
@@ -851,9 +783,9 @@ function ReportBuilderInner() {
                         {/* Actions */}
                         <div className="flex items-center gap-2 shrink-0">
                           <button
-                            onClick={() => { loadReport(r); setViewSaved(false); }}
+                            onClick={() => { loadReport(r); setViewSaved(false); setTimeout(() => runReport(), 80); }}
                             className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer border-none">
-                            Load
+                            Run
                           </button>
                           <button
                             onClick={() => setShareTarget({ id: r.id, name: r.report_name })}
