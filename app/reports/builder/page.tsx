@@ -496,6 +496,64 @@ function ReportBuilderInner() {
     setSaving(false); setSaveModalOpen(false);
   }
 
+  // Runs a saved report directly from its stored config — bypasses React state
+  // so results appear immediately without waiting for setState to commit.
+  async function runReportWith(report: SavedReport) {
+    const e = CATALOG.find(c => c.key === report.entity_key);
+    if (!e || !schoolId || report.selected_fields.length === 0) return;
+
+    loadReport(report);  // populates the left-panel UI
+    setViewSaved(false);
+    setRunning(true); setError(""); setResults(null);
+
+    try {
+      let query = supabase.from(e.table)
+        .select(["school_id", ...report.selected_fields].join(", "))
+        .eq("school_id", schoolId)
+        .limit(report.row_limit);
+
+      const noVal = new Set(["is_true","is_false","arr_is_empty","arr_not_empty"]);
+      for (const f of report.filters) {
+        if (!f.value && !noVal.has(f.op)) continue;
+        switch (f.op) {
+          case "contains":      query = query.ilike(f.field, `%${f.value}%`); break;
+          case "not_contains":  query = query.not(f.field, "ilike", `%${f.value}%`); break;
+          case "eq":            query = query.eq(f.field, f.value); break;
+          case "not_eq":        query = query.neq(f.field, f.value); break;
+          case "gt":            query = query.gt(f.field, f.value); break;
+          case "gte":           query = query.gte(f.field, f.value); break;
+          case "lt":            query = query.lt(f.field, f.value); break;
+          case "lte":           query = query.lte(f.field, f.value); break;
+          case "is_true":       query = query.eq(f.field, true); break;
+          case "is_false":      query = query.eq(f.field, false); break;
+          case "after":         query = query.gte(f.field, f.value); break;
+          case "before":        query = query.lte(f.field, f.value); break;
+          case "arr_includes":  query = query.contains(f.field, [f.value.trim()]); break;
+          case "arr_excludes":  query = query.not(f.field, "cs", `{${f.value.trim()}}`); break;
+          case "arr_not_empty": query = query.neq(f.field, "{}"); break;
+          case "arr_is_empty":  query = query.eq(f.field, "{}"); break;
+        }
+      }
+      if (report.sort_field) {
+        query = query.order(report.sort_field, { ascending: report.sort_dir === "asc" });
+      }
+
+      const { data, error: qErr } = await query;
+      if (qErr) throw qErr;
+      setResults((data ?? []) as unknown as Record<string, unknown>[]);
+
+      // Update run stats
+      await supabase.from("saved_reports").update({
+        last_run_at: new Date().toISOString(),
+        run_count: (report.run_count ?? 0) + 1,
+      }).eq("id", report.id);
+      await loadSavedReports();
+    } catch (ex: any) {
+      setError(ex.message ?? "Query failed.");
+    }
+    setRunning(false);
+  }
+
   async function handleDeleteReport(id: string) {
     await supabase.from("saved_reports").delete().eq("id", id);
     if (activeReportId === id) { setActiveReportId(null); setSaveName(""); setSaveDesc(""); }
@@ -783,7 +841,7 @@ function ReportBuilderInner() {
                         {/* Actions */}
                         <div className="flex items-center gap-2 shrink-0">
                           <button
-                            onClick={() => { loadReport(r); setViewSaved(false); setTimeout(() => runReport(), 80); }}
+                            onClick={() => runReportWith(r)}
                             className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer border-none">
                             Run
                           </button>
