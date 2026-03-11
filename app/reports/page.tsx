@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { useRole } from "../../contexts/RoleContext";
 import RoleGuard from "../../components/RoleGuard";
+import { ShareReportModal } from "../../components/ShareReportModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,26 @@ type TermGpaBucket = {
   avg: number;
   count: number;
 };
+
+type SavedReportSummary = {
+  id: string;
+  report_name: string;
+  description: string | null;
+  entity_key: string;
+  run_count: number;
+  last_run_at: string | null;
+  updated_at: string;
+};
+
+function timeAgo(iso: string | null) {
+  if (!iso) return "never";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60)  return mins <= 1 ? "just now" : `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 type DashStats = {
   totalTutors: number;
@@ -145,9 +166,11 @@ function ReportsDashboardInner() {
   const router = useRouter();
   const { schoolId } = useRole();
 
-  const [stats, setStats]     = useState<DashStats | null>(null);
-  const [trend, setTrend]     = useState<TermGpaBucket[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats,        setStats]        = useState<DashStats | null>(null);
+  const [trend,        setTrend]        = useState<TermGpaBucket[]>([]);
+  const [savedReports, setSavedReports] = useState<SavedReportSummary[]>([]);
+  const [shareTarget,  setShareTarget]  = useState<{id:string;name:string}|null>(null);
+  const [loading,      setLoading]      = useState(true);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -240,6 +263,15 @@ function ReportsDashboardInner() {
         outstandingInvoices: (invoiceData as any)?.length ?? 0,
       });
       setTrend(trendData);
+
+      // Fetch saved reports
+      const { data: srData } = await supabase
+        .from("saved_reports")
+        .select("id, report_name, description, entity_key, run_count, last_run_at, updated_at")
+        .eq("school_id", schoolId)
+        .order("updated_at", { ascending: false });
+      if (srData) setSavedReports(srData as SavedReportSummary[]);
+
       setLoading(false);
     }
 
@@ -334,6 +366,59 @@ function ReportsDashboardInner() {
         </div>
         <GpaTrendChart data={trend} />
       </div>
+
+      {/* ── Saved Reports ── */}
+      {savedReports.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-900">Saved Reports</h2>
+            <button onClick={() => router.push("/reports/builder?view=saved")}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-transparent border-none cursor-pointer p-0">
+              Manage in Builder →
+            </button>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden divide-y divide-gray-50">
+            {savedReports.map(r => (
+              <div key={r.id} className="flex items-start gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-900 leading-snug">{r.report_name}</p>
+                  {r.description && <p className="text-xs text-gray-400 mt-0.5">{r.description}</p>}
+                  <p className="text-xs text-gray-400 mt-1">
+                    {r.entity_key} · Run {r.run_count}×
+                    {r.last_run_at && ` · ${timeAgo(r.last_run_at)}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setShareTarget({ id: r.id, name: r.report_name })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                    </svg>
+                    Share
+                  </button>
+                  <button
+                    onClick={() => router.push("/reports/builder")}
+                    className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer border-none">
+                    Open
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Share modal for reports dashboard */}
+      {shareTarget && schoolId && (
+        <ShareReportModal
+          reportId={shareTarget.id}
+          reportName={shareTarget.name}
+          schoolId={schoolId}
+          onClose={() => setShareTarget(null)}
+        />
+      )}
 
       {/* ── Quick Reports ── */}
       <h2 className="text-base font-semibold text-gray-900 mb-3">Available Reports</h2>

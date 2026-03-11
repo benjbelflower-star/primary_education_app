@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "../../../lib/supabaseClient";
 import { useRole } from "../../../contexts/RoleContext";
 import RoleGuard from "../../../components/RoleGuard";
+import { ShareReportModal } from "../../../components/ShareReportModal";
 
 // ─── Report Catalog ───────────────────────────────────────────────────────────
 
@@ -256,32 +257,14 @@ function opsFor(type: FieldType): { value: FilterOp; label: string }[] {
   ];
 }
 
-// ─── Share Modal ─────────────────────────────────────────────────────────────
+// ShareReportModal is imported from components/ShareReportModal.tsx
 
-type SystemRecipient = {
-  id: string;
-  type: "user" | "guardian";
-  name: string;
-  email: string;
-  role?: string;
-};
-
-function ShareModal({
-  reportId,
-  reportName,
-  schoolId,
-  onClose,
-}: {
-  reportId: string;
-  reportName: string;
-  schoolId: string;
-  onClose: () => void;
-}) {
+function ShareModal_UNUSED_PLACEHOLDER() {
   const [search,     setSearch]     = useState("");
-  const [candidates, setCandidates] = useState<SystemRecipient[]>([]);
-  const [existing,   setExisting]   = useState<SystemRecipient[]>([]);
+  const [candidates, setCandidates] = useState<{id:string;type:string;name:string;email:string;role?:string}[]>([]);
+  const [existing,   setExisting]   = useState<{id:string;type:string;name:string;email:string}[]>([]);
   const [loading,    setLoading]    = useState(false);
-  const [sharing,    setSharing]    = useState<string | null>(null); // id being added
+  const [sharing,    setSharing]    = useState<string | null>(null);
   const [removing,   setRemoving]   = useState<string | null>(null);
   const [shareError, setShareError] = useState("");
 
@@ -599,6 +582,8 @@ function ReportBuilderInner() {
   const [saving,         setSaving]         = useState(false);
   const [deleteConfirm,  setDeleteConfirm]  = useState<string | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [viewSaved,      setViewSaved]      = useState(false);
+  const [shareTarget,    setShareTarget]    = useState<{id:string;name:string}|null>(null);
 
   useEffect(() => { if (schoolId) loadSavedReports(); }, [schoolId]);
 
@@ -841,15 +826,35 @@ function ReportBuilderInner() {
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">1 — Data Source</p>
             </div>
             <div className="p-2 flex flex-col gap-1">
+              {/* Saved Reports — special entry */}
+              <button
+                onClick={() => { setViewSaved(true); setEntity(null); setResults(null); }}
+                className={cx("w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors border",
+                  viewSaved
+                    ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                    : "bg-blue-50 text-blue-700 border-blue-100 hover:border-blue-300 hover:bg-blue-100"
+                )}>
+                <p className="font-semibold leading-tight flex items-center gap-1.5">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline" }}>
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                  </svg>
+                  Saved Reports
+                  {savedReports.length > 0 && <span className={cx("ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full", viewSaved ? "bg-white text-blue-600" : "bg-blue-100 text-blue-600")}>{savedReports.length}</span>}
+                </p>
+                <p className={cx("text-xs mt-0.5 leading-snug", viewSaved ? "text-blue-200" : "text-blue-500")}>Manage, share, and re-run saved reports</p>
+              </button>
+
+              <div className="border-t border-gray-100 my-1" />
+
               {CATALOG.map(e => (
-                <button key={e.key} onClick={() => selectEntity(e)}
+                <button key={e.key} onClick={() => { selectEntity(e); setViewSaved(false); }}
                   className={cx("w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors border",
-                    entity?.key === e.key
+                    entity?.key === e.key && !viewSaved
                       ? "bg-slate-900 text-white border-slate-900 font-semibold"
                       : "bg-white text-gray-700 border-transparent hover:border-gray-200 hover:bg-gray-50"
                   )}>
                   <p className="font-semibold leading-tight">{e.label}</p>
-                  <p className={cx("text-xs mt-0.5 leading-snug", entity?.key === e.key ? "text-slate-300" : "text-gray-400")}>{e.description}</p>
+                  <p className={cx("text-xs mt-0.5 leading-snug", entity?.key === e.key && !viewSaved ? "text-slate-300" : "text-gray-400")}>{e.description}</p>
                 </button>
               ))}
             </div>
@@ -962,10 +967,79 @@ function ReportBuilderInner() {
 
         {/* Right panel: results */}
         <div className="flex-1 min-w-0">
-          {!entity && (
+
+          {/* ── Saved Reports management view ── */}
+          {viewSaved && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-slate-50">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Saved Reports</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{savedReports.length} report{savedReports.length !== 1 ? "s" : ""} saved for this school</p>
+                </div>
+              </div>
+              {savedReports.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <p className="text-gray-400 text-sm font-medium">No saved reports yet</p>
+                  <p className="text-gray-300 text-xs mt-1">Build a report and click "Save Report" to get started</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {savedReports.map(r => {
+                    const cat = CATALOG.find(c => c.key === r.entity_key);
+                    return (
+                      <div key={r.id} className="flex items-start gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-gray-900 leading-snug">{r.report_name}</p>
+                          {r.description && <p className="text-xs text-gray-400 mt-0.5 leading-snug">{r.description}</p>}
+                          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                            <span className="text-xs text-gray-400">{cat?.label ?? r.entity_key}</span>
+                            <span className="text-gray-200">·</span>
+                            <span className="text-xs text-gray-400">{r.selected_fields.length} field{r.selected_fields.length !== 1 ? "s" : ""}</span>
+                            <span className="text-gray-200">·</span>
+                            <span className="text-xs text-gray-400">Run {r.run_count}×</span>
+                            {r.last_run_at && (
+                              <>
+                                <span className="text-gray-200">·</span>
+                                <span className="text-xs text-gray-400">{timeAgo(r.last_run_at)}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => { loadReport(r); setViewSaved(false); }}
+                            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-700 cursor-pointer border-none">
+                            Load
+                          </button>
+                          <button
+                            onClick={() => setShareTarget({ id: r.id, name: r.report_name })}
+                            className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer flex items-center gap-1.5">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                            </svg>
+                            Share
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(r.id)}
+                            className="px-3 py-1.5 rounded-lg border border-red-200 bg-white text-xs font-semibold text-red-500 hover:bg-red-50 cursor-pointer">
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!viewSaved && !entity && (
             <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-gray-200 border-dashed">
               <p className="text-gray-400 text-sm font-medium">Select a data source to get started</p>
-              <p className="text-gray-300 text-xs mt-1">{savedReports.length > 0 ? "Or click a saved report above to reload it" : "Choose from the list on the left"}</p>
+              <p className="text-gray-300 text-xs mt-1">{savedReports.length > 0 ? "Or click Saved Reports to manage your reports" : "Choose from the list on the left"}</p>
             </div>
           )}
 
@@ -1040,13 +1114,23 @@ function ReportBuilderInner() {
         </div>
       </div>
 
-      {/* Share modal */}
+      {/* Share modal — from header/results Save Changes button */}
       {shareModalOpen && activeReportId && schoolId && (
-        <ShareModal
+        <ShareReportModal
           reportId={activeReportId}
           reportName={saveName}
           schoolId={schoolId}
           onClose={() => setShareModalOpen(false)}
+        />
+      )}
+
+      {/* Share modal — from Saved Reports management panel */}
+      {shareTarget && schoolId && (
+        <ShareReportModal
+          reportId={shareTarget.id}
+          reportName={shareTarget.name}
+          schoolId={schoolId}
+          onClose={() => setShareTarget(null)}
         />
       )}
 
