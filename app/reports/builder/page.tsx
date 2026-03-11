@@ -397,7 +397,7 @@ function ReportBuilderInner() {
 
       const { data, error: qErr } = await query;
       if (qErr) throw qErr;
-      setResults((data ?? []) as Record<string, unknown>[]);
+      setResults((data ?? []) as unknown as Record<string, unknown>[]);
     } catch (e: any) {
       setError(e.message ?? "Query failed.");
     }
