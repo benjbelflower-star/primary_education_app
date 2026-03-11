@@ -58,7 +58,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Alerts",   path: "/notifications", icon: "🔔", roles: ["admin","teacher","finance","tutor","advisor"] },
   { label: "Invoices", path: "/invoices/new",  icon: "🧾", roles: ["admin","finance","tutor"] },
   { label: "Claims",   path: "/claims/new",    icon: "📦", roles: ["admin","finance"] },
-  { label: "Reports",  path: "/reports/tutor-compliance", icon: "📊", roles: ["admin","finance"] },
+  { label: "Reports",  path: "/reports",                  icon: "📊", roles: ["admin","finance"] },
   { label: "Tutors",   path: "/tutors",        icon: "🎓", roles: ["admin"] },
   { label: "Users",    path: "/admin/users",   icon: "⚙️", roles: ["admin"] },
 ];
