@@ -14,7 +14,6 @@ type StaffMember = {
   employment_status: string;
   email: string | null;
   phone: string | null;
-  photo_url: string | null;
 };
 
 type AssignedStudent = {
@@ -192,24 +191,15 @@ export default function TeacherDetailView() {
         {/* Photo + name + actions */}
         <div className="flex items-start gap-4">
 
-          {/* Avatar / photo */}
-          {member.photo_url ? (
-            <img
-              src={member.photo_url}
-              alt={fullName}
-              style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover",
-                       border: "3px solid #e2e8f0", flexShrink: 0 }}
-            />
-          ) : (
-            <div style={{
-              width: 72, height: 72, borderRadius: "50%", background: bgColor,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 26, fontWeight: 700, color: "white", flexShrink: 0,
-              border: "3px solid #e2e8f0", letterSpacing: 1, userSelect: "none",
-            }}>
-              {initials(member.first_name, member.last_name)}
-            </div>
-          )}
+          {/* Avatar */}
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%", background: bgColor,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 26, fontWeight: 700, color: "white", flexShrink: 0,
+            border: "3px solid #e2e8f0", letterSpacing: 1, userSelect: "none",
+          }}>
+            {initials(member.first_name, member.last_name)}
+          </div>
 
           {/* Name + badges */}
           <div className="flex-1 min-w-0">

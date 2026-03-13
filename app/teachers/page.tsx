@@ -11,7 +11,6 @@ type StaffMember = {
   role_type: string | null;
   employment_status: string;
   email: string | null;
-  photo_url: string | null;
 };
 
 const AVATAR_COLORS = [
@@ -26,19 +25,8 @@ function avatarColor(name: string) {
 
 function StaffAvatar({ member }: { member: StaffMember }) {
   const name = member.first_name + member.last_name;
-  const initials = ((member.first_name[0] ?? "") + (member.last_name[0] ?? "")).toUpperCase();
+  const inits = ((member.first_name[0] ?? "") + (member.last_name[0] ?? "")).toUpperCase();
   const bg = avatarColor(name);
-
-  if (member.photo_url) {
-    return (
-      <img
-        src={member.photo_url}
-        alt={initials}
-        style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover",
-                 border: "2px solid #e2e8f0", flexShrink: 0 }}
-      />
-    );
-  }
   return (
     <div style={{
       width: 36, height: 36, borderRadius: "50%", background: bg,
@@ -46,7 +34,7 @@ function StaffAvatar({ member }: { member: StaffMember }) {
       fontSize: 13, fontWeight: 700, color: "white", flexShrink: 0,
       border: "2px solid #e2e8f0", letterSpacing: 0.5, userSelect: "none",
     }}>
-      {initials}
+      {inits}
     </div>
   );
 }
