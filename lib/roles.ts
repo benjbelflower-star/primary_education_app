@@ -58,9 +58,10 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { label: "Alerts",   path: "/notifications", icon: "🔔", roles: ["admin","teacher","finance","tutor","advisor"] },
   { label: "Invoices", path: "/invoices/new",  icon: "🧾", roles: ["admin","finance","tutor"] },
   { label: "Claims",   path: "/claims/new",    icon: "📦", roles: ["admin","finance"] },
-  { label: "Reports",  path: "/reports",                  icon: "📊", roles: ["admin","finance"] },
-  { label: "Tutors",   path: "/tutors",        icon: "🎓", roles: ["admin"] },
-  { label: "Users",    path: "/admin/users",   icon: "⚙️", roles: ["admin"] },
+  { label: "Reports",  path: "/reports",        icon: "📊", roles: ["admin","finance"] },
+  { label: "Teachers", path: "/teachers",       icon: "👨‍🏫", roles: ["admin","teacher"] },
+  { label: "Tutors",   path: "/tutors",         icon: "🎓", roles: ["admin"] },
+  { label: "Users",    path: "/admin/users",    icon: "⚙️", roles: ["admin"] },
 ];
 
 // ─── Page-level access ────────────────────────────────────────────────────────
@@ -76,6 +77,7 @@ export const PAGE_ACCESS: { path: string; roles: AppRole[] }[] = [
   { path: "/logs",          roles: ["admin","teacher","tutor"] },
   { path: "/reports",       roles: ["admin","finance"] },
   { path: "/packets",       roles: ["admin","finance"] },
+  { path: "/teachers",      roles: ["admin","teacher"] },
 ];
 
 /** Returns true if the given role is allowed to visit the given path. */
