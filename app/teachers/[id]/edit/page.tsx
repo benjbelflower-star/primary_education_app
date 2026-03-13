@@ -136,11 +136,13 @@ export default function EditTeacher() {
   useEffect(() => {
     if (!id) return;
     async function load() {
-      const { data } = await supabase
+      const { data, error: fetchErr } = await supabase
         .from("staff")
         .select("*")
         .eq("id", id as string)
         .single();
+
+      if (fetchErr) console.error("Failed to load staff:", fetchErr.message);
 
       if (data) {
         const s = data as any;

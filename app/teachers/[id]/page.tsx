@@ -94,7 +94,7 @@ export default function TeacherDetailView() {
       ] = await Promise.all([
         supabase
           .from("staff")
-          .select("id, first_name, last_name, role_type, employment_status, email, phone, photo_url")
+          .select("*")
           .eq("id", id as string)
           .single(),
 

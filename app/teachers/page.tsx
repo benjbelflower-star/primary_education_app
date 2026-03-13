@@ -65,7 +65,7 @@ export default function TeacherRoster() {
 
       const { data } = await supabase
         .from("staff")
-        .select("id, first_name, last_name, role_type, employment_status, email, photo_url")
+        .select("*")
         .eq("school_id", userData.school_id)
         .order("last_name", { ascending: true });
 
